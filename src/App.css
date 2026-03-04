@@ -1,0 +1,432 @@
+/* ──────────────────────────────────────────────────
+   S-ION Design System
+   Blood Orange (#FF4500) on Pure White (#FFFFFF)
+   Typography: Inter
+   ────────────────────────────────────────────────── */
+
+:root {
+  /* Blood Orange Palette */
+  --sion-accent: #FF4500;
+  --sion-accent-hover: #E63E00;
+  --sion-accent-light: rgba(255, 69, 0, 0.08);
+  --sion-accent-glow: rgba(255, 69, 0, 0.15);
+  --sion-accent-soft: #FF6B35;
+
+  /* Neutrals */
+  --sion-bg: #FFFFFF;
+  --sion-bg-secondary: #FAFAFA;
+  --sion-bg-tertiary: #F5F5F5;
+  --sion-border: #E8E8E8;
+  --sion-border-hover: #D0D0D0;
+  --sion-text-primary: #1A1A1A;
+  --sion-text-secondary: #6B6B6B;
+  --sion-text-tertiary: #9E9E9E;
+
+  /* Titlebar */
+  --sion-titlebar-height: 38px;
+
+  /* Shadows */
+  --sion-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --sion-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --sion-shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.08);
+  --sion-shadow-accent: 0 4px 20px rgba(255, 69, 0, 0.15);
+
+  /* Motion */
+  --sion-transition-fast: 120ms ease;
+  --sion-transition: 200ms ease;
+  --sion-transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Radius */
+  --sion-radius-sm: 6px;
+  --sion-radius-md: 10px;
+  --sion-radius-lg: 16px;
+  --sion-radius-full: 9999px;
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--sion-bg);
+  color: var(--sion-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── App Layout ── */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── Custom Titlebar ── */
+.titlebar {
+  height: var(--sion-titlebar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: var(--sion-bg);
+  border-bottom: 1px solid var(--sion-border);
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+  z-index: 100;
+}
+
+.titlebar-drag {
+  flex: 1;
+  height: 100%;
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.titlebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-logo img {
+  width: 18px;
+  height: 18px;
+}
+
+.titlebar-logo span {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--sion-accent);
+  text-transform: uppercase;
+}
+
+.titlebar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-btn {
+  width: 36px;
+  height: var(--sion-titlebar-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sion-text-secondary);
+  transition: background var(--sion-transition-fast), color var(--sion-transition-fast);
+  border-radius: 0;
+}
+
+.titlebar-btn:hover {
+  background: var(--sion-bg-tertiary);
+  color: var(--sion-text-primary);
+}
+
+.titlebar-btn.close:hover {
+  background: var(--sion-accent);
+  color: white;
+}
+
+.titlebar-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* macOS-style traffic lights (left side) */
+.titlebar-traffic {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 12px;
+  -webkit-app-region: no-drag;
+}
+
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  transition: opacity var(--sion-transition-fast);
+  position: relative;
+}
+
+.traffic-light:hover {
+  opacity: 0.8;
+}
+
+.traffic-light.close { background: #FF5F57; }
+.traffic-light.minimize { background: #FEBC2E; }
+.traffic-light.maximize { background: #28C840; }
+
+/* ── Main Content Area ── */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Hero Section ── */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 640px;
+  text-align: center;
+  animation: fadeInUp var(--sion-transition-slow) both;
+}
+
+.hero-icon {
+  width: 80px;
+  height: 80px;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.hero h1 {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--sion-text-primary);
+  letter-spacing: -0.5px;
+}
+
+.hero h1 span {
+  color: var(--sion-accent);
+}
+
+.hero p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--sion-text-secondary);
+  max-width: 480px;
+}
+
+/* ── Action Bar (Smart Mode) ── */
+.action-bar {
+  width: 100%;
+  max-width: 600px;
+  position: relative;
+  margin-top: 8px;
+}
+
+.action-bar-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 52px 0 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--sion-text-primary);
+  background: var(--sion-bg);
+  border: 2px solid var(--sion-border);
+  border-radius: var(--sion-radius-full);
+  outline: none;
+  transition: border-color var(--sion-transition), box-shadow var(--sion-transition);
+}
+
+.action-bar-input::placeholder {
+  color: var(--sion-text-tertiary);
+  font-weight: 400;
+}
+
+.action-bar-input:focus {
+  border-color: var(--sion-accent);
+  box-shadow: var(--sion-shadow-accent);
+}
+
+.action-bar-submit {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: var(--sion-accent);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--sion-transition-fast), transform var(--sion-transition-fast);
+}
+
+.action-bar-submit:hover {
+  background: var(--sion-accent-hover);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.action-bar-submit:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.action-bar-submit svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Mode Badge ── */
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--sion-radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: all var(--sion-transition);
+  cursor: pointer;
+}
+
+.mode-badge.smart {
+  background: var(--sion-accent-light);
+  color: var(--sion-accent);
+  border: 1px solid rgba(255, 69, 0, 0.15);
+}
+
+.mode-badge.expert {
+  background: var(--sion-text-primary);
+  color: white;
+  border: 1px solid transparent;
+}
+
+.mode-badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: blink 2s ease-in-out infinite;
+}
+
+.mode-badge.smart .dot { background: var(--sion-accent); }
+.mode-badge.expert .dot { background: var(--sion-accent); }
+
+/* ── Swarm Status Footer ── */
+.swarm-status {
+  position: absolute;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 20px;
+  background: var(--sion-bg-secondary);
+  border: 1px solid var(--sion-border);
+  border-radius: var(--sion-radius-full);
+  animation: fadeInUp var(--sion-transition-slow) 0.3s both;
+}
+
+.swarm-agent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--sion-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.swarm-agent .indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sion-border);
+}
+
+.swarm-agent.active .indicator {
+  background: #28C840;
+  box-shadow: 0 0 6px rgba(40, 200, 64, 0.4);
+  animation: blink 2s ease-in-out infinite;
+}
+
+/* ── Shortcuts ── */
+.shortcuts {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.shortcut-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--sion-text-tertiary);
+  background: var(--sion-bg-secondary);
+  border: 1px solid var(--sion-border);
+  border-radius: var(--sion-radius-sm);
+  cursor: pointer;
+  transition: all var(--sion-transition-fast);
+}
+
+.shortcut-chip:hover {
+  border-color: var(--sion-accent);
+  color: var(--sion-accent);
+  background: var(--sion-accent-light);
+}
+
+.shortcut-chip kbd {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  padding: 1px 4px;
+  background: var(--sion-bg-tertiary);
+  border-radius: 3px;
+}
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}

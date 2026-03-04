@@ -1,0 +1,92 @@
+version: "2026.03.04"
+engine_name: "S-ION"
+guardian_model: "Claude-Opus-4.6"
+
+# ──────────────────────────────────────
+# Senior Engineering DNA
+# ──────────────────────────────────────
+engineering_standards:
+  html: "Semantic HTML5 only. No div-soup."
+  css: "Tailwind-first. Strictly NO inline styles."
+  logic: "Type-safe TypeScript. Functional patterns over OOP."
+
+# ──────────────────────────────────────
+# Privacy Fortress Protocols
+# ──────────────────────────────────────
+privacy:
+  network: "Intercept and scrub all outgoing headers in Rust. Block OS telemetry."
+  storage: "Local-only AES-256 encryption via LanceDB. Zero cloud sync."
+  execution: "All third-party code must run in a Firecracker Sandbox."
+
+# ──────────────────────────────────────
+# Universal Accessibility (Grandma/Grandpa Rule)
+# ──────────────────────────────────────
+ux_logic:
+  jargon_filter: "Translate 4xx/5xx errors into empathetic, non-technical English."
+  veto_power: "Any file system or message action requires a visual 'Action Card' approval."
+  theme:
+    background: "#FFFFFF"
+    accent: "#FF4500"  # Blood Orange
+
+# ──────────────────────────────────────
+# Swarm Intelligence Roster (2026)
+# ──────────────────────────────────────
+swarm:
+  conductor:
+    model: "Claude-Opus-4.6"
+    designation: "The Conductor"
+    role: "Logic Guardian. Enforces the 1M-token context Logic Manifest. Approves all tool calls."
+    triggers:
+      - "system_architecture_change"
+      - "natural_language_to_shell"
+      - "security_audit"
+      - "code_review"
+
+  visionary:
+    model: "Gemini-3.1-Pro"
+    designation: "The Visionary"
+    role: "Multimodal QA. Native screen-reading. UI/UX verification. Scam detection."
+    triggers:
+      - "ui_ux_visual_audit"
+      - "web_research_summarization"
+      - "video_audio_analysis"
+      - "screenshot_analysis"
+
+  builder:
+    model: "Claude-Sonnet-4.6"
+    designation: "The Builder"
+    role: "Parallel Swarm. Spawns workers for code/refactor/build artifacts."
+    triggers:
+      - "code_generation"
+      - "refactoring"
+      - "component_building"
+
+  scout:
+    model: "GPT-5.3-Instant"
+    designation: "The Scout"
+    role: "Low-Latency Doer. Web-browsing, form-filling, cross-app comms."
+    triggers:
+      - "web_browsing"
+      - "form_filling"
+      - "messaging_whatsapp_imessage_discord"
+
+# ──────────────────────────────────────
+# CoPaw Bridge Configuration
+# ──────────────────────────────────────
+copaw:
+  bridge_url: "wss://copaw-bridge.up.railway.app"
+  channels:
+    - "whatsapp"
+    - "imessage"
+    - "discord"
+  resync_on_wake: true
+  queue_strategy: "fifo_with_priority"
+
+# ──────────────────────────────────────
+# Safety Valve (Snap-Back)
+# ──────────────────────────────────────
+safety:
+  sandbox: "firecracker"
+  snapshot_before_execution: true
+  max_vm_lifetime_seconds: 300
+  auto_incinerate_on_error: true
