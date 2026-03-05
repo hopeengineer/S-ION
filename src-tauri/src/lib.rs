@@ -1,6 +1,8 @@
 mod orchestrator;
 
+use orchestrator::egress::EgressFilter;
 use orchestrator::router::{self, DispatchResult, ExpertPins, RuntimeMode};
+use orchestrator::sentinel::Sentinel;
 use orchestrator::{PipelineResult, SamLogic};
 use std::sync::Mutex;
 use tauri::State;
@@ -14,6 +16,10 @@ struct AppState {
     expert_pins: Mutex<ExpertPins>,
     /// Queued messages from CoPaw bridge received while the app was asleep.
     pending_resync: Mutex<Vec<String>>,
+    /// Egress Filter: domain allowlist gate for all outgoing AI agent requests.
+    egress: Mutex<EgressFilter>,
+    /// Sentinel: privacy-preserving telemetry with Triple-Pass PII scrubber.
+    sentinel: Sentinel,
 }
 
 // ──────────────────────────────────────────────────
@@ -139,6 +145,46 @@ fn queue_message(message: String, state: State<AppState>) {
 }
 
 // ──────────────────────────────────────────────────
+// S-ION Sentinel IPC Commands
+// ──────────────────────────────────────────────────
+
+/// Returns the security log (egress pass/block events).
+#[tauri::command]
+fn get_security_log(state: State<AppState>) -> String {
+    let egress = state.egress.lock().unwrap();
+    let log = egress.get_log();
+    serde_json::to_string(&log).unwrap_or_default()
+}
+
+/// Returns the oldest pending Sentinel report (for consent toast).
+#[tauri::command]
+fn get_pending_report(state: State<AppState>) -> String {
+    match state.sentinel.get_pending_report() {
+        Some(r) => serde_json::to_string(&r).unwrap_or_default(),
+        None => "null".into(),
+    }
+}
+
+/// User approved: send the report to Railway.
+#[tauri::command]
+async fn approve_report(state: State<'_, AppState>) -> Result<String, String> {
+    state.sentinel.approve_and_send().await
+}
+
+/// User dismissed: discard the pending report.
+#[tauri::command]
+fn dismiss_report(state: State<AppState>) -> String {
+    state.sentinel.dismiss_report();
+    "Report dismissed".into()
+}
+
+/// Check if the current install is the founder/developer.
+#[tauri::command]
+fn is_founder(state: State<AppState>) -> bool {
+    state.sentinel.is_founder()
+}
+
+// ──────────────────────────────────────────────────
 // Application Entry
 // ──────────────────────────────────────────────────
 
@@ -193,11 +239,17 @@ pub fn run() {
     // Initialize Expert Mode pins from YAML defaults
     let expert_pins = ExpertPins::from_yaml_defaults(&sam_logic.expert_mode.default_pins);
 
+    // Initialize Egress Filter and Sentinel
+    let egress = EgressFilter::from_sam_logic(&sam_logic);
+    let sentinel = Sentinel::new(&sam_logic);
+
     let app_state = AppState {
         sam_logic,
         mode: Mutex::new(RuntimeMode::Smart),
         expert_pins: Mutex::new(expert_pins),
         pending_resync: Mutex::new(Vec::new()),
+        egress: Mutex::new(egress),
+        sentinel,
     };
 
     tauri::Builder::default()
@@ -216,6 +268,11 @@ pub fn run() {
             dispatch_expert,
             resync_messages,
             queue_message,
+            get_security_log,
+            get_pending_report,
+            approve_report,
+            dismiss_report,
+            is_founder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running S-ION");

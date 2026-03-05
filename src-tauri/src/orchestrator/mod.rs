@@ -1,4 +1,6 @@
+pub mod egress;
 pub mod router;
+pub mod sentinel;
 pub mod translator;
 
 use serde::{Deserialize, Serialize};
@@ -40,6 +42,42 @@ pub struct PrivacyConfig {
     pub network: String,
     pub storage: String,
     pub execution: String,
+    #[serde(default)]
+    pub egress_allowlist: Vec<String>,
+    #[serde(default)]
+    pub user_allowlist: Vec<String>,
+    #[serde(default)]
+    pub sentinel: SentinelConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SentinelConfig {
+    #[serde(default)]
+    pub railway_endpoint: String,
+    #[serde(default)]
+    pub developer_id: String,
+    #[serde(default = "default_max_events")]
+    pub max_local_events: usize,
+    #[serde(default = "default_batch_interval")]
+    pub batch_interval_secs: u64,
+}
+
+impl Default for SentinelConfig {
+    fn default() -> Self {
+        Self {
+            railway_endpoint: String::new(),
+            developer_id: String::new(),
+            max_local_events: 200,
+            batch_interval_secs: 300,
+        }
+    }
+}
+
+fn default_max_events() -> usize {
+    200
+}
+fn default_batch_interval() -> u64 {
+    300
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

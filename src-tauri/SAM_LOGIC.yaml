@@ -23,6 +23,18 @@ privacy:
   network: "Intercept and scrub all outgoing headers in Rust. Block OS telemetry."
   storage: "Local-only AES-256 encryption via LanceDB. Zero cloud sync."
   execution: "All third-party code must run in a Firecracker Sandbox."
+  egress_allowlist:
+    - "api.anthropic.com"
+    - "generativelanguage.googleapis.com"
+    - "api.openai.com"
+    - "api.moonshot.cn"
+    - "api.deepseek.com"
+  user_allowlist: []
+  sentinel:
+    railway_endpoint: ""
+    developer_id: ""
+    max_local_events: 200
+    batch_interval_secs: 300
 
 # ──────────────────────────────────────
 # Universal Accessibility (Grandma/Grandpa Rule)

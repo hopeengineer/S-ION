@@ -51,6 +51,26 @@ interface DispatchResult {
   error: string | null;
 }
 
+interface SecurityEvent {
+  timestamp: string;
+  domain: string;
+  full_url: string;
+  status: string;
+  agent_key: string;
+}
+
+interface SentinelReport {
+  install_id: string;
+  app_version: string;
+  event_type: string;
+  error_code: string;
+  logic_trace: string;
+  model_used: string;
+  agent_key: string;
+  blocked_domain: string | null;
+  timestamp: string;
+}
+
 // ── Model Registry (for Expert Mode UI) ──
 
 const AGENTS = [
@@ -114,6 +134,19 @@ function App() {
   const [pins, setPins] = useState<Record<string, string>>({});
   const [selectedCategory, setSelectedCategory] = useState("terminal_cli");
 
+  // Sidebar tab state
+  const [sidebarTab, setSidebarTab] = useState<"cockpit" | "security" | "sentinel">("cockpit");
+
+  // Security Dashboard state
+  const [securityLog, setSecurityLog] = useState<SecurityEvent[]>([]);
+
+  // Sentinel Consent Toast state
+  const [pendingReport, setPendingReport] = useState<SentinelReport | null>(null);
+  const [showReportJson, setShowReportJson] = useState(false);
+
+  // Founder check
+  const [isFounder, setIsFounder] = useState(false);
+
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -125,7 +158,40 @@ function App() {
     invoke<string>("get_model_pins").then((res) => {
       try { setPins(JSON.parse(res)); } catch { }
     });
+    // Check founder status
+    invoke<boolean>("is_founder").then(setIsFounder).catch(() => { });
   }, []);
+
+  // Ctrl+Shift+S: toggle hidden Sentinel tab
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "S") {
+        e.preventDefault();
+        if (isFounder && sidebarOpen) {
+          setSidebarTab((prev) => (prev === "sentinel" ? "cockpit" : "sentinel"));
+        }
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isFounder, sidebarOpen]);
+
+  // Poll security log and pending reports when security tab is active
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const poll = setInterval(() => {
+      invoke<string>("get_security_log").then((res) => {
+        try { setSecurityLog(JSON.parse(res)); } catch { }
+      });
+      invoke<string>("get_pending_report").then((res) => {
+        try {
+          const parsed = JSON.parse(res);
+          setPendingReport(parsed || null);
+        } catch { setPendingReport(null); }
+      });
+    }, 2000);
+    return () => clearInterval(poll);
+  }, [sidebarOpen]);
 
   const handleSubmit = useCallback(async () => {
     if (!intent.trim()) return;
@@ -399,47 +465,149 @@ function App() {
           </footer>
         </section>
 
-        {/* ── Expert Mode Sidebar (Mixing Board) ── */}
+        {/* Expert Mode Sidebar */}
         {sidebarOpen && (
           <aside className="expert-sidebar">
-            <h2 className="sidebar-title">Model Cockpit</h2>
-            <p className="sidebar-subtitle">Pin models to task categories</p>
+            {/* Tab Switcher */}
+            <nav className="sidebar-tabs">
+              <button
+                className={`sidebar-tab ${sidebarTab === "cockpit" ? "active" : ""}`}
+                onClick={() => setSidebarTab("cockpit")}
+              >
+                🏛️ Cockpit
+              </button>
+              <button
+                className={`sidebar-tab ${sidebarTab === "security" ? "active" : ""}`}
+                onClick={() => setSidebarTab("security")}
+              >
+                🛡️ Security
+              </button>
+            </nav>
 
-            <div className="pin-grid">
-              {TASK_CATEGORIES.map((cat) => (
-                <div key={cat.key} className="pin-card">
-                  <label className="pin-label">{cat.label}</label>
-                  <div className="pin-options">
-                    {AGENTS.filter(a => a.key !== "audit_hook").map((agent) => (
-                      <button
-                        key={agent.key}
-                        className={`pin-option ${pins[cat.key] === agent.key ? "pinned" : ""}`}
-                        onClick={() => handlePinChange(cat.key, agent.key)}
-                        title={agent.model}
-                      >
-                        <span className="pin-emoji">{agent.emoji}</span>
-                        <span className="pin-model-name">{agent.model}</span>
-                        {pins[cat.key] === agent.key && <span className="pin-active">📌</span>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {/* Cockpit Tab */}
+            {sidebarTab === "cockpit" && (
+              <>
+                <h2 className="sidebar-title">Model Cockpit</h2>
+                <p className="sidebar-subtitle">Pin models to task categories</p>
 
-            <div className="sidebar-info">
-              <h3>Provider Health</h3>
-              {AGENTS.map((agent) => (
-                <div key={agent.key} className="health-row">
-                  <span className="health-emoji">{agent.emoji}</span>
-                  <span className="health-name">{agent.model}</span>
-                  <div className="health-bar">
-                    <div className="health-fill" style={{ width: "85%", background: agent.color }} />
-                  </div>
+                <div className="pin-grid">
+                  {TASK_CATEGORIES.map((cat) => (
+                    <div key={cat.key} className="pin-card">
+                      <label className="pin-label">{cat.label}</label>
+                      <div className="pin-options">
+                        {AGENTS.filter(a => a.key !== "audit_hook").map((agent) => (
+                          <button
+                            key={agent.key}
+                            className={`pin-option ${pins[cat.key] === agent.key ? "pinned" : ""}`}
+                            onClick={() => handlePinChange(cat.key, agent.key)}
+                            title={agent.model}
+                          >
+                            <span className="pin-emoji">{agent.emoji}</span>
+                            <span className="pin-model-name">{agent.model}</span>
+                            {pins[cat.key] === agent.key && <span className="pin-active">📌</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+
+                <div className="sidebar-info">
+                  <h3>Provider Health</h3>
+                  {AGENTS.map((agent) => (
+                    <div key={agent.key} className="health-row">
+                      <span className="health-emoji">{agent.emoji}</span>
+                      <span className="health-name">{agent.model}</span>
+                      <div className="health-bar">
+                        <div className="health-fill" style={{ width: "85%", background: agent.color }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Security Tab */}
+            {sidebarTab === "security" && (
+              <>
+                <h2 className="sidebar-title">Security Dashboard</h2>
+                <p className="sidebar-subtitle">Real-time egress monitoring</p>
+
+                <div className="security-log">
+                  {securityLog.length === 0 ? (
+                    <p className="security-empty">🛡️ No network events yet. Submit a query to see the egress log.</p>
+                  ) : (
+                    securityLog.slice().reverse().map((evt, i) => (
+                      <div key={i} className={`security-event ${evt.status}`}>
+                        <span className="security-status">
+                          {evt.status === "pass" ? "✅" : "🚫"}
+                        </span>
+                        <div className="security-info">
+                          <span className="security-domain">{evt.domain}</span>
+                          <span className="security-agent">{evt.agent_key}</span>
+                        </div>
+                        <span className="security-time">
+                          {new Date(evt.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Sentinel Tab (Founder Only, Ctrl+Shift+S) */}
+            {sidebarTab === "sentinel" && isFounder && (
+              <>
+                <h2 className="sidebar-title">🔭 Sentinel</h2>
+                <p className="sidebar-subtitle">Founder's telemetry view</p>
+                <div className="sentinel-placeholder">
+                  <p>Aggregate error data from Railway will appear here once the endpoint is configured.</p>
+                </div>
+              </>
+            )}
           </aside>
+        )}
+
+        {/* Consent Toast */}
+        {pendingReport && (
+          <div className="consent-toast">
+            <div className="consent-header">
+              <span className="consent-icon">⚠️</span>
+              <p>Oops! S-ION hit a bump. Can we send a masked report to Sam so he can fix it for you?</p>
+            </div>
+            <div className="consent-actions">
+              <button
+                className="consent-view"
+                onClick={() => setShowReportJson(!showReportJson)}
+              >
+                {showReportJson ? "Hide Report" : "View Report"}
+              </button>
+              <button
+                className="consent-send"
+                onClick={async () => {
+                  await invoke("approve_report");
+                  setPendingReport(null);
+                  setShowReportJson(false);
+                }}
+              >
+                Send
+              </button>
+              <button
+                className="consent-dismiss"
+                onClick={async () => {
+                  await invoke("dismiss_report");
+                  setPendingReport(null);
+                  setShowReportJson(false);
+                }}
+              >
+                No Thanks
+              </button>
+            </div>
+            {showReportJson && (
+              <pre className="consent-json">{JSON.stringify(pendingReport, null, 2)}</pre>
+            )}
+          </div>
         )}
       </section>
     </main>
