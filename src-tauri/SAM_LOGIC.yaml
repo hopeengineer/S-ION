@@ -1,4 +1,4 @@
-version: "2026.03.04"
+version: "2026.03.05"
 engine_name: "S-ION"
 guardian_model: "Claude-Opus-4.6"
 
@@ -30,45 +30,132 @@ ux_logic:
 
 # ──────────────────────────────────────
 # Swarm Intelligence Roster (2026)
+# 6-Agent Registry: Commander, Audit Hook, Analyst, Visionary, Builder, Scout
 # ──────────────────────────────────────
 swarm:
-  conductor:
+  commander:
+    model: "Kimi-K2.5"
+    designation: "The Commander"
+    role: "Primary orchestrator. Decomposes user intents into parallel execution plans with tool calls and sub-agent assignments."
+    api_env_key: "KIMI_API_KEY"
+    api_base_url: "https://api.moonshot.cn/v1"
+    triggers:
+      - "multi_step_orchestration"
+      - "parallel_task_planning"
+      - "tool_call_decomposition"
+      - "complex_workflow"
+      - "ui_build"
+
+  audit_hook:
     model: "Claude-Opus-4.6"
-    designation: "The Conductor"
-    role: "Logic Guardian. Enforces the 1M-token context Logic Manifest. Approves all tool calls."
+    designation: "The Audit Hook"
+    role: "Safety guardian. Verifies execution plans against SAM_LOGIC.yaml before Firecracker MicroVMs boot. Has absolute veto power."
+    api_env_key: "ANTHROPIC_API_KEY"
+    api_base_url: "https://api.anthropic.com/v1"
     triggers:
       - "system_architecture_change"
       - "natural_language_to_shell"
       - "security_audit"
       - "code_review"
 
+  analyst:
+    model: "DeepSeek-V3"
+    designation: "The Analyst"
+    role: "Low-cost high-logic provider. Handles simple Q&A, summaries, web research, and general reasoning at optimal price-performance."
+    api_env_key: "DEEPSEEK_API_KEY"
+    api_base_url: "https://api.deepseek.com/v1"
+    triggers:
+      - "simple_question"
+      - "summarization"
+      - "web_research"
+      - "general_reasoning"
+      - "low_cost_logic"
+
   visionary:
     model: "Gemini-3.1-Pro"
     designation: "The Visionary"
-    role: "Multimodal QA. Native screen-reading. UI/UX verification. Scam detection."
+    role: "Multimodal QA. Native screen-reading. UI/UX verification. Scam detection. Long-document analysis."
+    api_env_key: "GEMINI_API_KEY"
+    api_base_url: "https://generativelanguage.googleapis.com/v1beta"
     triggers:
       - "ui_ux_visual_audit"
-      - "web_research_summarization"
       - "video_audio_analysis"
       - "screenshot_analysis"
+      - "long_document_analysis"
 
   builder:
     model: "Claude-Sonnet-4.6"
     designation: "The Builder"
-    role: "Parallel Swarm. Spawns workers for code/refactor/build artifacts."
+    role: "Code architect. Complex refactoring, code generation, and build artifact creation."
+    api_env_key: "ANTHROPIC_API_KEY"
+    api_base_url: "https://api.anthropic.com/v1"
     triggers:
       - "code_generation"
       - "refactoring"
       - "component_building"
+      - "complex_code_refactor"
 
   scout:
     model: "GPT-5.3-Instant"
     designation: "The Scout"
-    role: "Low-Latency Doer. Web-browsing, form-filling, cross-app comms."
+    role: "Low-Latency executer. Web-browsing, form-filling, tool calling, cross-app comms."
+    api_env_key: "OPENAI_API_KEY"
+    api_base_url: "https://api.openai.com/v1"
     triggers:
       - "web_browsing"
       - "form_filling"
       - "messaging_whatsapp_imessage_discord"
+      - "terminal_cli"
+
+# ──────────────────────────────────────
+# Smart Mode Triage (Gemini Flash)
+# Fast (~200ms) intent classification before dispatch
+# ──────────────────────────────────────
+smart_mode:
+  triage_model: "gemini-2.0-flash"
+  triage_api_env_key: "GEMINI_API_KEY"
+  triage_api_base_url: "https://generativelanguage.googleapis.com/v1beta"
+  categories:
+    - id: "simple_qa"
+      description: "Simple question, summary, or general lookup"
+      route_to: "analyst"
+    - id: "parallel_ui"
+      description: "UI build, parallel research, multi-step creative task"
+      route_to: "commander"
+    - id: "deep_code"
+      description: "Complex code refactor, security audit, architecture change"
+      route_to: "builder"
+    - id: "long_context"
+      description: "Long video, large PDF, massive document analysis"
+      route_to: "visionary"
+
+# ──────────────────────────────────────
+# Expert Mode Defaults (Sam's Pins)
+# ──────────────────────────────────────
+expert_mode:
+  default_pins:
+    terminal_cli: "scout"
+    frontend_coding: "commander"
+    logic_auditing: "audit_hook"
+    web_research: "analyst"
+    grandma_mode_ui: "visionary"
+
+# ──────────────────────────────────────
+# Audit Hook Rules
+# ──────────────────────────────────────
+audit_rules:
+  require_approval_for:
+    - "file_system_write"
+    - "network_request_to_external"
+    - "shell_command_execution"
+    - "message_send"
+    - "firecracker_vm_boot"
+  max_parallel_agents: 3
+  max_plan_steps: 10
+  reject_if:
+    - "plan references undeclared API keys"
+    - "plan bypasses Privacy Fortress"
+    - "plan exceeds max_vm_lifetime_seconds"
 
 # ──────────────────────────────────────
 # CoPaw Bridge Configuration

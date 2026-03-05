@@ -44,13 +44,17 @@
 }
 
 /* ── Reset ── */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   overflow: hidden;
 }
@@ -177,9 +181,17 @@ body {
   opacity: 0.8;
 }
 
-.traffic-light.close { background: #FF5F57; }
-.traffic-light.minimize { background: #FEBC2E; }
-.traffic-light.maximize { background: #28C840; }
+.traffic-light.close {
+  background: #FF5F57;
+}
+
+.traffic-light.minimize {
+  background: #FEBC2E;
+}
+
+.traffic-light.maximize {
+  background: #28C840;
+}
 
 /* ── Main Content Area ── */
 .main-content {
@@ -332,8 +344,13 @@ body {
   animation: blink 2s ease-in-out infinite;
 }
 
-.mode-badge.smart .dot { background: var(--sion-accent); }
-.mode-badge.expert .dot { background: var(--sion-accent); }
+.mode-badge.smart .dot {
+  background: var(--sion-accent);
+}
+
+.mode-badge.expert .dot {
+  background: var(--sion-accent);
+}
 
 /* ── Swarm Status Footer ── */
 .swarm-status {
@@ -409,24 +426,476 @@ body {
   border-radius: 3px;
 }
 
-/* ── Animations ── */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ── Pipeline Result (Two-Stage) ── */
+.pipeline-result {
+  width: 100%;
+  max-width: 640px;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeInUp var(--sion-transition-slow) both;
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.03); }
+.pipeline-stage {
+  padding: 16px;
+  background: var(--sion-bg-secondary);
+  border: 1px solid var(--sion-border);
+  border-radius: var(--sion-radius-md);
+  transition: border-color var(--sion-transition);
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+.pipeline-stage.approved {
+  border-color: #28C840;
+  background: rgba(40, 200, 64, 0.04);
 }
+
+.pipeline-stage.rejected {
+  border-color: #FF3B30;
+  background: rgba(255, 59, 48, 0.04);
+}
+
+.stage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.stage-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.stage-header.commander .stage-badge {
+  color: var(--sion-accent);
+}
+
+.stage-header.audit .stage-badge {
+  color: #6B6B6B;
+}
+
+.stage-model {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--sion-text-tertiary);
+}
+
+.stage-reasoning {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--sion-text-secondary);
+}
+
+.execution-steps {
+  margin-top: 12px;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.execution-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--sion-text-primary);
+}
+
+.step-agent {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--sion-accent);
+  background: var(--sion-accent-light);
+  padding: 2px 8px;
+  border-radius: var(--sion-radius-sm);
+  letter-spacing: 0.5px;
+}
+
+.step-action {
+  flex: 1;
+  min-width: 200px;
+}
+
+.step-tools {
+  display: flex;
+  gap: 4px;
+}
+
+.step-tools code {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--sion-bg-tertiary);
+  border: 1px solid var(--sion-border);
+  border-radius: 4px;
+  color: var(--sion-text-secondary);
+}
+
+.step-deps {
+  font-size: 10px;
+  color: var(--sion-text-tertiary);
+  font-style: italic;
+}
+
+.violations {
+  margin-top: 8px;
+  padding-left: 16px;
+  list-style: disc;
+}
+
+.violation {
+  font-size: 12px;
+  color: #FF3B30;
+  line-height: 1.5;
+}
+
+/* ── Pipeline Loading ── */
+.pipeline-loading {
+  margin-top: 16px;
+  padding: 12px 20px;
+  background: var(--sion-accent-light);
+  border: 1px solid rgba(255, 69, 0, 0.15);
+  border-radius: var(--sion-radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sion-accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pipeline-loading .pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+.pipeline-error {
+  margin-top: 8px;
+  padding: 10px 16px;
+  background: rgba(255, 59, 48, 0.06);
+  border: 1px solid rgba(255, 59, 48, 0.15);
+  border-radius: var(--sion-radius-md);
+  font-size: 12px;
+  color: #FF3B30;
+}
+
+.route-result {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: var(--sion-bg-secondary);
+  border: 1px solid var(--sion-border);
+  border-radius: var(--sion-radius-md);
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--sion-text-secondary);
+}
+
+/* ── Spinner ── */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+
+  /* ── Content Wrapper (sidebar layout) ── */
+  .content-wrapper {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .app-layout.sidebar-open .main-content {
+    flex: 1;
+  }
+
+  /* ── Triage Result (Smart Mode) ── */
+  .triage-result {
+    width: 100%;
+    max-width: 640px;
+    margin-top: 16px;
+    padding: 14px 18px;
+    background: var(--sion-bg-secondary);
+    border: 1px solid var(--sion-border);
+    border-radius: var(--sion-radius-md);
+    animation: fadeInUp var(--sion-transition-slow) both;
+  }
+
+  .triage-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .triage-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #F39C12;
+  }
+
+  .triage-model {
+    font-size: 11px;
+    color: var(--sion-text-tertiary);
+  }
+
+  .triage-reasoning {
+    font-size: 13px;
+    color: var(--sion-text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .triage-route {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .triage-label {
+    font-size: 12px;
+    color: var(--sion-text-tertiary);
+  }
+
+  .triage-agent {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .triage-confidence {
+    font-size: 11px;
+    color: var(--sion-text-tertiary);
+    margin-left: auto;
+  }
+
+  .expert-result .triage-badge {
+    color: var(--sion-accent);
+  }
+
+  /* ── Category Selector (Expert Mode) ── */
+  .category-selector {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .category-chip {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--sion-border);
+    border-radius: var(--sion-radius-full);
+    background: var(--sion-bg);
+    color: var(--sion-text-secondary);
+    cursor: pointer;
+    transition: all var(--sion-transition-fast);
+  }
+
+  .category-chip:hover {
+    border-color: var(--sion-accent);
+    color: var(--sion-accent);
+  }
+
+  .category-chip.active {
+    background: var(--sion-accent);
+    color: white;
+    border-color: var(--sion-accent);
+  }
+
+  /* ── Expert Sidebar (Mixing Board) ── */
+  .expert-sidebar {
+    width: 320px;
+    min-width: 320px;
+    background: var(--sion-bg-secondary);
+    border-left: 1px solid var(--sion-border);
+    padding: 20px;
+    overflow-y: auto;
+    animation: slideInRight var(--sion-transition-slow) both;
+  }
+
+  .sidebar-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--sion-text-primary);
+    margin-bottom: 4px;
+  }
+
+  .sidebar-subtitle {
+    font-size: 12px;
+    color: var(--sion-text-tertiary);
+    margin-bottom: 20px;
+  }
+
+  .pin-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .pin-card {
+    padding: 12px;
+    background: var(--sion-bg);
+    border: 1px solid var(--sion-border);
+    border-radius: var(--sion-radius-md);
+  }
+
+  .pin-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sion-text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .pin-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .pin-option {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    border: 1px solid var(--sion-border);
+    border-radius: var(--sion-radius-sm);
+    background: var(--sion-bg);
+    color: var(--sion-text-secondary);
+    cursor: pointer;
+    transition: all var(--sion-transition-fast);
+  }
+
+  .pin-option:hover {
+    border-color: var(--sion-accent);
+    color: var(--sion-text-primary);
+  }
+
+  .pin-option.pinned {
+    border-color: var(--sion-accent);
+    background: var(--sion-accent-light);
+    color: var(--sion-accent);
+    box-shadow: 0 0 8px rgba(255, 69, 0, 0.15);
+  }
+
+  .pin-emoji {
+    font-size: 12px;
+  }
+
+  .pin-model-name {
+    font-weight: 500;
+  }
+
+  .pin-active {
+    font-size: 10px;
+    margin-left: 2px;
+  }
+
+  /* ── Provider Health Bars ── */
+  .sidebar-info {
+    margin-top: 24px;
+  }
+
+  .sidebar-info h3 {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sion-text-secondary);
+    margin-bottom: 12px;
+  }
+
+  .health-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .health-emoji {
+    font-size: 14px;
+    width: 22px;
+    text-align: center;
+  }
+
+  .health-name {
+    font-size: 11px;
+    color: var(--sion-text-secondary);
+    width: 80px;
+  }
+
+  .health-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--sion-bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .health-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width var(--sion-transition);
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(40px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes pulse {
+
+    0%,
+    100% {
+      transform: scale(1);
+    }
+
+    50% {
+      transform: scale(1.03);
+    }
+  }
+
+  @keyframes blink {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.4;
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }

@@ -8,15 +8,23 @@ description: S-ION Development Master Instructions — auto-applies to every S-I
 
 When working on S-ION, **proactively recommend model switches** based on the task type:
 
-### Use Claude Opus 4.6 ("The Conductor") for:
+### Use Kimi K2.5 ("The Commander") for:
+- Primary intent decomposition and parallel execution planning
+- Multi-step task orchestration across sub-agents
+- Tool-call planning and dependency resolution
+- High-context decision-making (128K native context)
+
+> **Trigger phrase:** "🎯 This task involves multi-agent orchestration — recommend switching to **Kimi K2.5**."
+
+### Use Claude Opus 4.6 ("The Audit Hook") for:
+- **Auditing** Kimi's execution plans before Firecracker MicroVMs boot
 - System architecture changes and design decisions
 - Rust backend code (Tauri IPC bridge, MCP host, orchestrator)
 - Security-sensitive logic (privacy interceptors, encryption, sandboxing)
 - `SAM_LOGIC.yaml` enforcement and reasoning
 - Natural Language → Shell command translation (safety-critical)
-- Complex multi-step planning and debugging
 
-> **Trigger phrase:** "⚙️ This task requires deep reasoning — recommend switching to **Opus 4.6**."
+> **Trigger phrase:** "⚙️ This task requires deep reasoning / security audit — recommend switching to **Opus 4.6**."
 
 ### Use Gemini 3.1 Pro ("The Visionary") for:
 - UI/UX visual audits and design polish
@@ -52,12 +60,13 @@ When working on S-ION, **proactively recommend model switches** based on the tas
 ## 🏗️ Architecture Principles
 
 1. **Rust is the Brain** — All API keys, orchestration, and LLM routing run in Rust. The React frontend is a "blind painter."
-2. **LanceDB for Memory** — Local AES-256 encrypted vector store. Zero cloud sync.
-3. **MCP Dual Mode** — Client (pull local tools) + Server (expose to CoPaw mobile bridge).
-4. **Firecracker Sandbox** — All third-party code runs in ephemeral MicroVMs.
-5. **Frameless Custom Chrome** — Own every pixel with Blood Orange design language.
-6. **CoPaw Cloud Bridge** — Railway-hosted Node.js gateway for WhatsApp/iMessage/Discord.
-7. **Re-sync on Wake** — Rust backend handles async message queue re-sync when machine wakes from sleep.
+2. **Two-Stage Pipeline** — Kimi K2.5 (Commander) plans → Opus 4.6 (Audit Hook) verifies → then dispatch.
+3. **LanceDB for Memory** — Local AES-256 encrypted vector store. Zero cloud sync.
+4. **MCP Dual Mode** — Client (pull local tools) + Server (expose to CoPaw mobile bridge).
+5. **Firecracker Sandbox** — All third-party code runs in ephemeral MicroVMs. Opus must approve before boot.
+6. **Frameless Custom Chrome** — Own every pixel with Blood Orange design language.
+7. **CoPaw Cloud Bridge** — Railway-hosted Node.js gateway for WhatsApp/iMessage/Discord.
+8. **Re-sync on Wake** — Rust backend handles async message queue re-sync when machine wakes from sleep.
 
 ## 🔒 Privacy Fortress
 
