@@ -403,7 +403,7 @@ body {
 
 .mode-badge.expert {
   background: var(--sion-text-primary);
-  color: white;
+  color: var(--sion-bg);
   border: 1px solid transparent;
 }
 
