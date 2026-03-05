@@ -3,7 +3,9 @@ pub mod heartbeat;
 pub mod router;
 pub mod sandbox;
 pub mod sentinel;
+pub mod sidecar_manager;
 pub mod translator;
+pub mod vsock_proto;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

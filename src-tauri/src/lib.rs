@@ -5,6 +5,8 @@ use orchestrator::heartbeat::BridgeHeartbeat;
 use orchestrator::router::{self, DispatchResult, ExpertPins, RuntimeMode};
 use orchestrator::sandbox::{Sandbox, SandboxConfig};
 use orchestrator::sentinel::Sentinel;
+use orchestrator::sidecar_manager::SidecarManager;
+use orchestrator::vsock_proto::{VsockChannel, VsockMission};
 use orchestrator::{PipelineResult, SamLogic};
 use std::sync::Mutex;
 use tauri::State;
@@ -26,6 +28,10 @@ struct AppState {
     sandbox: Mutex<Sandbox>,
     /// Bridge Heartbeat: secure connection to Railway for CoPaw missions.
     heartbeat: BridgeHeartbeat,
+    /// Sidecar Manager: VM lifecycle for Expert Mode isolation.
+    sidecar: Mutex<SidecarManager>,
+    /// Vsock Channel: framed communication to Guest Agent.
+    vsock: Mutex<VsockChannel>,
 }
 
 // ──────────────────────────────────────────────────
@@ -310,6 +316,116 @@ fn bridge_local_missions(state: State<AppState>) -> String {
 }
 
 // ──────────────────────────────────────────────────
+// Phase 6: Sidecar Manager IPC Commands
+// ──────────────────────────────────────────────────
+
+/// Get current sidecar status for the Expert Mode sidebar.
+#[tauri::command]
+fn sidecar_status(state: State<AppState>) -> String {
+    let sidecar = state.sidecar.lock().unwrap();
+    sidecar.to_status_json()
+}
+
+/// Provision the sidecar (download kernel / install WSL2).
+#[tauri::command]
+fn sidecar_provision(state: State<AppState>) -> Result<String, String> {
+    let mut sidecar = state.sidecar.lock().unwrap();
+    // Provisioning creates directory structures (synchronous for now;
+    // actual downloads will use a background task in production)
+    sidecar.provision()
+}
+
+/// Boot the VM sidecar for Expert Mode isolation.
+#[tauri::command]
+fn sidecar_boot(state: State<AppState>) -> Result<String, String> {
+    let mut sidecar = state.sidecar.lock().unwrap();
+    sidecar.boot_vm()
+}
+
+/// Gracefully shut down the VM sidecar.
+#[tauri::command]
+fn sidecar_shutdown(state: State<AppState>) -> Result<String, String> {
+    let mut sidecar = state.sidecar.lock().unwrap();
+    sidecar.shutdown_vm()
+}
+
+/// Get the latest health report from the Guest Agent.
+#[tauri::command]
+fn sidecar_health(state: State<AppState>) -> String {
+    let vsock = state.vsock.lock().unwrap();
+    match vsock.get_health() {
+        Some(h) => serde_json::to_string(h).unwrap_or_default(),
+        None => "null".into(),
+    }
+}
+
+/// Check sidecar health (alive/ready/failed).
+#[tauri::command]
+fn sidecar_health_check(state: State<AppState>) -> Result<String, String> {
+    let sidecar = state.sidecar.lock().unwrap();
+    sidecar.health_check()
+}
+
+/// Ping the Guest Agent via vsock to verify it's alive.
+#[tauri::command]
+async fn vsock_ping(state: State<'_, AppState>) -> Result<String, String> {
+    let port = {
+        let vsock = state.vsock.lock().unwrap();
+        vsock.port
+    };
+    let mut channel = VsockChannel::new();
+    channel.port = port;
+    let pong = channel.ping().await?;
+    serde_json::to_string(&pong).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Send a mission to the Guest Agent via vsock and get the result.
+#[tauri::command]
+async fn vsock_send_mission(command: String, state: State<'_, AppState>) -> Result<String, String> {
+    let port = {
+        let vsock = state.vsock.lock().unwrap();
+        vsock.port
+    };
+    let mission = VsockMission::new(uuid::Uuid::new_v4().to_string(), command)
+        .with_files(std::collections::HashMap::new())
+        .with_timeout(30);
+    let mut channel = VsockChannel::new();
+    channel.port = port;
+    let result = channel.send_mission(mission).await?;
+    serde_json::to_string(&result).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Execute a bridge mission inside the sandbox.
+/// Pull from Railway → dispatch → sandbox → Action Card.
+#[tauri::command]
+async fn bridge_execute_mission(state: State<'_, AppState>) -> Result<String, String> {
+    // Step 1: Pull the next mission from the bridge
+    let mission = state.heartbeat.pulse().await?;
+    let mission = match mission {
+        Some(m) => m,
+        None => return Ok("{\"status\": \"no_missions\"}".into()),
+    };
+
+    // Step 2: Route the mission intent through Smart Mode
+    let sam_logic = state.sam_logic.clone();
+    let intent = mission.payload.as_deref().unwrap_or("(empty mission)");
+    let dispatch = router::dispatch_smart(intent, &sam_logic).await;
+
+    // Step 3: If the dispatch produced code, execute it in the sandbox
+    if let Some(ref response) = dispatch.response {
+        let sandbox_result = {
+            let mut sandbox = state.sandbox.lock().unwrap();
+            sandbox.execute(response, &dispatch.routed_to)
+        };
+        return serde_json::to_string(&sandbox_result)
+            .map_err(|e| format!("Serialization error: {}", e));
+    }
+
+    // No code to execute, just return the dispatch result
+    serde_json::to_string(&dispatch).map_err(|e| format!("Serialization error: {}", e))
+}
+
+// ──────────────────────────────────────────────────
 // Application Entry
 // ──────────────────────────────────────────────────
 
@@ -382,6 +498,10 @@ pub fn run() {
     println!("🏗️  Sandbox backend: {}", sandbox.backend.label());
     let heartbeat = BridgeHeartbeat::new(&sam_logic.privacy.sentinel.railway_endpoint);
 
+    // Initialize Phase 6: Sidecar Manager + Vsock Channel
+    let sidecar = SidecarManager::detect();
+    let vsock = VsockChannel::new();
+
     let app_state = AppState {
         sam_logic,
         mode: Mutex::new(RuntimeMode::Smart),
@@ -391,6 +511,8 @@ pub fn run() {
         sentinel,
         sandbox: Mutex::new(sandbox),
         heartbeat,
+        sidecar: Mutex::new(sidecar),
+        vsock: Mutex::new(vsock),
     };
 
     tauri::Builder::default()
@@ -424,6 +546,15 @@ pub fn run() {
             bridge_pulse,
             bridge_pending,
             bridge_local_missions,
+            sidecar_status,
+            sidecar_provision,
+            sidecar_boot,
+            sidecar_shutdown,
+            sidecar_health,
+            sidecar_health_check,
+            bridge_execute_mission,
+            vsock_ping,
+            vsock_send_mission,
         ])
         .run(tauri::generate_context!())
         .expect("error while running S-ION");
