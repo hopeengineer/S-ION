@@ -189,11 +189,11 @@ pub async fn call_deepseek(intent: &str, sam_logic: &SamLogic) -> Result<String,
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
-            "model": "deepseek-chat",
+            "model": "deepseek-v3.2",
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are S-ION's Analyst (DeepSeek V3). Provide clear, concise, high-quality answers."
+                    "content": format!("You are S-ION's Analyst (DeepSeek V3.2). Provide clear, concise, high-quality answers.\n{}", sam_logic.constitution.zero_assumption_directive)
                 },
                 { "role": "user", "content": intent }
             ],
@@ -370,6 +370,16 @@ fn resolve_agent(agent_key: &str, sam_logic: &SamLogic) -> (String, String, Stri
             "scout".into(),
             sam_logic.swarm.scout.model.clone(),
             sam_logic.swarm.scout.designation.clone(),
+        ),
+        "fast_designer" => (
+            "fast_designer".into(),
+            sam_logic.swarm.fast_designer.model.clone(),
+            sam_logic.swarm.fast_designer.designation.clone(),
+        ),
+        "pro_designer" => (
+            "pro_designer".into(),
+            sam_logic.swarm.pro_designer.model.clone(),
+            sam_logic.swarm.pro_designer.designation.clone(),
         ),
         _ => (
             "analyst".into(),

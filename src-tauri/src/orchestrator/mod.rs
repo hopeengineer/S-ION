@@ -10,6 +10,7 @@ pub struct SamLogic {
     pub version: String,
     pub engine_name: String,
     pub guardian_model: String,
+    pub constitution: Constitution,
     pub engineering_standards: EngineeringStandards,
     pub privacy: PrivacyConfig,
     pub ux_logic: UxLogic,
@@ -19,6 +20,11 @@ pub struct SamLogic {
     pub audit_rules: AuditRules,
     pub copaw: CoPawConfig,
     pub safety: SafetyConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Constitution {
+    pub zero_assumption_directive: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -49,7 +55,7 @@ pub struct ThemeConfig {
 }
 
 // ──────────────────────────────────────────────────
-// 6-Agent Swarm Roster
+// 8-Agent Swarm Roster
 // ──────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -60,6 +66,8 @@ pub struct SwarmRoster {
     pub visionary: SwarmAgent,
     pub builder: SwarmAgent,
     pub scout: SwarmAgent,
+    pub fast_designer: SwarmAgent,
+    pub pro_designer: SwarmAgent,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -226,16 +234,21 @@ pub async fn call_kimi_commander(
     let system_prompt = format!(
         r#"You are the S-ION Swarm Commander (Kimi K2.5). Decompose user intents into a parallel execution plan.
 
+{constitution}
+
 Available Sub-Agents:
 - analyst ({analyst_model}): {analyst_role}
 - visionary ({visionary_model}): {visionary_role}
 - builder ({builder_model}): {builder_role}
 - scout ({scout_model}): {scout_role}
+- fast_designer ({fast_designer_model}): {fast_designer_role}
+- pro_designer ({pro_designer_model}): {pro_designer_role}
 
 Rules: Max {max_steps} steps, max {max_agents} parallel agents.
 
 Respond ONLY with valid JSON:
 {{"intent":"<intent>","steps":[{{"step_id":1,"agent":"<key>","action":"<desc>","tool_calls":[],"depends_on":[]}}],"reasoning":"<why>"}}"#,
+        constitution = sam_logic.constitution.zero_assumption_directive,
         analyst_model = sam_logic.swarm.analyst.model,
         analyst_role = sam_logic.swarm.analyst.role,
         visionary_model = sam_logic.swarm.visionary.model,
@@ -244,6 +257,10 @@ Respond ONLY with valid JSON:
         builder_role = sam_logic.swarm.builder.role,
         scout_model = sam_logic.swarm.scout.model,
         scout_role = sam_logic.swarm.scout.role,
+        fast_designer_model = sam_logic.swarm.fast_designer.model,
+        fast_designer_role = sam_logic.swarm.fast_designer.role,
+        pro_designer_model = sam_logic.swarm.pro_designer.model,
+        pro_designer_role = sam_logic.swarm.pro_designer.role,
         max_steps = sam_logic.audit_rules.max_plan_steps,
         max_agents = sam_logic.audit_rules.max_parallel_agents,
     );

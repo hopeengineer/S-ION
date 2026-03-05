@@ -55,11 +55,13 @@ interface DispatchResult {
 
 const AGENTS = [
   { key: "commander", label: "Commander", model: "Kimi K2.5", emoji: "🎯", color: "#FF4500" },
-  { key: "audit_hook", label: "Audit Hook", model: "Opus 4.6", emoji: "🛡️", color: "#6B6B6B" },
-  { key: "analyst", label: "Analyst", model: "DeepSeek V3", emoji: "🔍", color: "#4A90D9" },
-  { key: "visionary", label: "Visionary", model: "Gemini Pro", emoji: "👁️", color: "#34A853" },
-  { key: "builder", label: "Builder", model: "Sonnet 4.6", emoji: "🔨", color: "#9B59B6" },
-  { key: "scout", label: "Scout", model: "GPT-5.3", emoji: "🏃", color: "#F39C12" },
+  { key: "audit_hook", label: "Audit Hook", model: "Claude 4.6", emoji: "🛡️", color: "#6B6B6B" },
+  { key: "analyst", label: "Analyst", model: "DeepSeek 3.2", emoji: "🔍", color: "#4A90D9" },
+  { key: "visionary", label: "Visionary", model: "Gemini 3.1 Pro", emoji: "👁️", color: "#34A853" },
+  { key: "builder", label: "Builder", model: "Claude 4.6", emoji: "🔨", color: "#9B59B6" },
+  { key: "scout", label: "Scout", model: "GPT-5 Mini", emoji: "🏃", color: "#F39C12" },
+  { key: "fast_designer", label: "Fast Designer", model: "Nano Banana", emoji: "🍌", color: "#FFD700" },
+  { key: "pro_designer", label: "Pro Designer", model: "Nano Banana Pro", emoji: "🎨", color: "#FF8C00" },
 ];
 
 const TASK_CATEGORIES = [
@@ -67,6 +69,7 @@ const TASK_CATEGORIES = [
   { key: "frontend_coding", label: "Frontend Coding" },
   { key: "logic_auditing", label: "Logic Auditing" },
   { key: "web_research", label: "Web Research" },
+  { key: "image_generation", label: "Image Generation" },
   { key: "grandma_mode_ui", label: "Grandma Mode" },
 ];
 

@@ -3,6 +3,12 @@ engine_name: "S-ION"
 guardian_model: "Claude-Opus-4.6"
 
 # ──────────────────────────────────────
+# Constitution & Core Rules
+# ──────────────────────────────────────
+constitution:
+  zero_assumption_directive: "You MUST NEVER assume facts, APIs, or states without verifying through research, search, or absolute proof. Hallucination is strictly forbidden. If you do not know definitively, you must admit it or execute a search tool. This is a hard constraint."
+
+# ──────────────────────────────────────
 # Senior Engineering DNA
 # ──────────────────────────────────────
 engineering_standards:
@@ -30,11 +36,11 @@ ux_logic:
 
 # ──────────────────────────────────────
 # Swarm Intelligence Roster (2026)
-# 6-Agent Registry: Commander, Audit Hook, Analyst, Visionary, Builder, Scout
+# 8-Agent Registry: Commander, Audit Hook, Analyst, Visionary, Builder, Scout, Fast Designer, Pro Designer
 # ──────────────────────────────────────
 swarm:
   commander:
-    model: "Kimi-K2.5"
+    model: "kimi-k2-0201"
     designation: "The Commander"
     role: "Primary orchestrator. Decomposes user intents into parallel execution plans with tool calls and sub-agent assignments."
     api_env_key: "KIMI_API_KEY"
@@ -47,7 +53,7 @@ swarm:
       - "ui_build"
 
   audit_hook:
-    model: "Claude-Opus-4.6"
+    model: "claude-4-6-opus-20260205"
     designation: "The Audit Hook"
     role: "Safety guardian. Verifies execution plans against SAM_LOGIC.yaml before Firecracker MicroVMs boot. Has absolute veto power."
     api_env_key: "ANTHROPIC_API_KEY"
@@ -59,7 +65,7 @@ swarm:
       - "code_review"
 
   analyst:
-    model: "DeepSeek-V3"
+    model: "deepseek-v3.2"
     designation: "The Analyst"
     role: "Low-cost high-logic provider. Handles simple Q&A, summaries, web research, and general reasoning at optimal price-performance."
     api_env_key: "DEEPSEEK_API_KEY"
@@ -72,7 +78,7 @@ swarm:
       - "low_cost_logic"
 
   visionary:
-    model: "Gemini-3.1-Pro"
+    model: "gemini-3.1-pro"
     designation: "The Visionary"
     role: "Multimodal QA. Native screen-reading. UI/UX verification. Scam detection. Long-document analysis."
     api_env_key: "GEMINI_API_KEY"
@@ -84,7 +90,7 @@ swarm:
       - "long_document_analysis"
 
   builder:
-    model: "Claude-Sonnet-4.6"
+    model: "claude-4-6-sonnet-20260217"
     designation: "The Builder"
     role: "Code architect. Complex refactoring, code generation, and build artifact creation."
     api_env_key: "ANTHROPIC_API_KEY"
@@ -96,7 +102,7 @@ swarm:
       - "complex_code_refactor"
 
   scout:
-    model: "GPT-5.3-Instant"
+    model: "gpt-5-mini"
     designation: "The Scout"
     role: "Low-Latency executer. Web-browsing, form-filling, tool calling, cross-app comms."
     api_env_key: "OPENAI_API_KEY"
@@ -106,6 +112,26 @@ swarm:
       - "form_filling"
       - "messaging_whatsapp_imessage_discord"
       - "terminal_cli"
+
+  fast_designer:
+    model: "nanobanana"
+    designation: "Fast Designer"
+    role: "Lightning fast native image generation for rapid prototyping."
+    api_env_key: "GEMINI_API_KEY"
+    api_base_url: "https://generativelanguage.googleapis.com/v1beta"
+    triggers:
+      - "image_generation"
+      - "storyboarding"
+
+  pro_designer:
+    model: "nanobanana-pro"
+    designation: "Pro Designer"
+    role: "High-fidelity professional asset production and 4K image generation."
+    api_env_key: "GEMINI_API_KEY"
+    api_base_url: "https://generativelanguage.googleapis.com/v1beta"
+    triggers:
+      - "marketing_assets"
+      - "high_fidelity_images"
 
 # ──────────────────────────────────────
 # Smart Mode Triage (Gemini Flash)
@@ -128,6 +154,9 @@ smart_mode:
     - id: "long_context"
       description: "Long video, large PDF, massive document analysis"
       route_to: "visionary"
+    - id: "image_gen"
+      description: "Image generation or visual concept request"
+      route_to: "fast_designer"
 
 # ──────────────────────────────────────
 # Expert Mode Defaults (Sam's Pins)
@@ -138,6 +167,7 @@ expert_mode:
     frontend_coding: "commander"
     logic_auditing: "audit_hook"
     web_research: "analyst"
+    image_generation: "fast_designer"
     grandma_mode_ui: "visionary"
 
 # ──────────────────────────────────────

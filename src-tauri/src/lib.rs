@@ -166,6 +166,14 @@ pub fn run() {
         "🏃 Scout: {} ({})",
         sam_logic.swarm.scout.model, sam_logic.swarm.scout.designation
     );
+    println!(
+        "🍌 Fast Designer: {} ({})",
+        sam_logic.swarm.fast_designer.model, sam_logic.swarm.fast_designer.designation
+    );
+    println!(
+        "🎨 Pro Designer: {} ({})",
+        sam_logic.swarm.pro_designer.model, sam_logic.swarm.pro_designer.designation
+    );
     println!("⚡ Smart Triage: {}", sam_logic.smart_mode.triage_model);
 
     // Initialize Expert Mode pins from YAML defaults
