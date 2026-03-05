@@ -69,9 +69,33 @@ const TASK_CATEGORIES = [
   { key: "frontend_coding", label: "Frontend Coding" },
   { key: "logic_auditing", label: "Logic Auditing" },
   { key: "web_research", label: "Web Research" },
-  { key: "image_generation", label: "Image Generation" },
   { key: "grandma_mode_ui", label: "Grandma Mode" },
 ];
+
+function GrandmaError({ error }: { error: string }) {
+  const [showDetails, setShowDetails] = useState(false);
+
+  const parts = error.split("\n\n[Dev Details: ");
+  const grandmaMessage = parts[0];
+  const devDetails = parts.length > 1 ? parts[1].replace(/\]$/, "") : null;
+
+  return (
+    <output className="grandma-error">
+      <div className="grandma-message">
+        <span className="grandma-icon">👵</span>
+        <p>{grandmaMessage}</p>
+      </div>
+      {devDetails && (
+        <div className="grandma-dev-toggle">
+          <button onClick={() => setShowDetails(!showDetails)}>
+            {showDetails ? "Hide Technical Details" : "View Technical Details"}
+          </button>
+          {showDetails && <pre className="dev-details">{devDetails}</pre>}
+        </div>
+      )}
+    </output>
+  );
+}
 
 function App() {
   const [intent, setIntent] = useState("");
@@ -219,8 +243,8 @@ function App() {
             <h1>What can <span>S-ION</span> do for you?</h1>
             <p>
               {mode === "smart"
-                ? "Smart Mode — S-ION auto-routes to the best model for your task."
-                : "Expert Mode — You control which model handles each task."}
+                ? "Smart Mode: S-ION auto-routes to the best model for your task."
+                : "Expert Mode: You control which model handles each task."}
             </p>
 
             {/* Expert Mode: Task Category Selector */}
@@ -310,6 +334,8 @@ function App() {
             </section>
           )}
 
+          {smartResult?.error && <GrandmaError error={smartResult.error} />}
+
           {/* ── Pipeline (Commander + Audit) ── */}
           {pipeline && (
             <section className="pipeline-result">
@@ -351,7 +377,7 @@ function App() {
                   )}
                 </article>
               )}
-              {pipeline.error && <output className="pipeline-error">⚠️ {pipeline.error}</output>}
+              {pipeline.error && <GrandmaError error={pipeline.error} />}
             </section>
           )}
 

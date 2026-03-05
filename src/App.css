@@ -1,6 +1,6 @@
 /* ──────────────────────────────────────────────────
    S-ION Design System
-   Blood Orange (#FF4500) — Light/Dark Mode
+   Blood Orange (#FF4500): Light/Dark Mode
    Typography: Inter
    ────────────────────────────────────────────────── */
 
@@ -22,7 +22,7 @@
   --sion-text-secondary: #6B6B6B;
   --sion-text-tertiary: #9E9E9E;
 
-  /* Sidebar (light mode — premium white) */
+  /* Sidebar (light mode: premium white) */
   --sion-sidebar-bg: #FAFAFA;
   --sion-sidebar-border: #E8E8E8;
   --sion-sidebar-card-bg: #FFFFFF;
@@ -809,7 +809,7 @@ body {
 
 .category-chip.active {
   background: var(--sion-text-primary);
-  color: white;
+  color: var(--sion-bg);
   border-color: var(--sion-text-primary);
   box-shadow: var(--sion-shadow-md);
 }
@@ -1046,4 +1046,82 @@ body {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ── Grandma Error UI ── */
+.grandma-error {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  width: 100%;
+  max-width: 640px;
+  background: var(--sion-bg);
+  border: 1px solid rgba(243, 156, 18, 0.3);
+  /* Warm amber border */
+  border-left: 3px solid #F39C12;
+  border-radius: var(--sion-radius-md);
+  padding: 16px 20px;
+  animation: fadeInUp var(--sion-transition) both;
+}
+
+.grandma-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.grandma-icon {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.grandma-message p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--sion-text-primary);
+  margin: 0;
+}
+
+.grandma-dev-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--sion-border);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+.grandma-dev-toggle button {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sion-text-tertiary);
+  cursor: pointer;
+  padding: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color var(--sion-transition-fast);
+}
+
+.grandma-dev-toggle button:hover {
+  color: var(--sion-text-primary);
+}
+
+.dev-details {
+  background: var(--sion-bg-secondary);
+  border: 1px solid var(--sion-border);
+  border-radius: var(--sion-radius-md);
+  padding: 12px;
+  font-family: monospace;
+  font-size: 11px;
+  color: #FF5F57;
+  /* Keep error red for dev details */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0;
 }

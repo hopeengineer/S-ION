@@ -86,7 +86,14 @@ fn route_intent(intent: &str, state: State<AppState>) -> String {
 #[tauri::command]
 async fn route_intent_live(intent: String, state: State<'_, AppState>) -> Result<String, String> {
     let sam_logic = state.sam_logic.clone();
-    let result: PipelineResult = orchestrator::route_intent_live(&intent, &sam_logic).await;
+    let mut result: PipelineResult = orchestrator::route_intent_live(&intent, &sam_logic).await;
+
+    // Phase 3: Grandma-Speak Interceptor
+    if let Some(e) = &result.error {
+        let grandma_msg = orchestrator::translator::translate_error_to_grandma(e, &sam_logic).await;
+        result.error = Some(format!("{}\n\n[Dev Details: {}]", grandma_msg, e));
+    }
+
     serde_json::to_string(&result).map_err(|e| format!("Serialization error: {}", e))
 }
 
@@ -94,7 +101,14 @@ async fn route_intent_live(intent: String, state: State<'_, AppState>) -> Result
 #[tauri::command]
 async fn dispatch_smart(intent: String, state: State<'_, AppState>) -> Result<String, String> {
     let sam_logic = state.sam_logic.clone();
-    let result: DispatchResult = router::dispatch_smart(&intent, &sam_logic).await;
+    let mut result: DispatchResult = router::dispatch_smart(&intent, &sam_logic).await;
+
+    // Phase 3: Grandma-Speak Interceptor
+    if let Some(e) = &result.error {
+        let grandma_msg = orchestrator::translator::translate_error_to_grandma(e, &sam_logic).await;
+        result.error = Some(format!("{}\n\n[Dev Details: {}]", grandma_msg, e));
+    }
+
     serde_json::to_string(&result).map_err(|e| format!("Serialization error: {}", e))
 }
 
