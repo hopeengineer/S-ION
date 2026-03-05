@@ -2,6 +2,7 @@ mod orchestrator;
 
 use orchestrator::egress::EgressFilter;
 use orchestrator::router::{self, DispatchResult, ExpertPins, RuntimeMode};
+use orchestrator::sandbox::{Sandbox, SandboxConfig};
 use orchestrator::sentinel::Sentinel;
 use orchestrator::{PipelineResult, SamLogic};
 use std::sync::Mutex;
@@ -20,6 +21,8 @@ struct AppState {
     egress: Mutex<EgressFilter>,
     /// Sentinel: privacy-preserving telemetry with Triple-Pass PII scrubber.
     sentinel: Sentinel,
+    /// Sandbox: Firecracker-ready code isolation with Snap-Back.
+    sandbox: Mutex<Sandbox>,
 }
 
 // ──────────────────────────────────────────────────
@@ -185,6 +188,53 @@ fn is_founder(state: State<AppState>) -> bool {
 }
 
 // ──────────────────────────────────────────────────
+// S-ION Sandbox IPC Commands (Phase 5)
+// ──────────────────────────────────────────────────
+
+/// Execute a script in the sandbox. Returns SandboxResult with diff + snapshot ID.
+#[tauri::command]
+fn sandbox_execute(
+    script: String,
+    agent_key: String,
+    state: State<AppState>,
+) -> Result<String, String> {
+    let mut sandbox = state.sandbox.lock().unwrap();
+    let result = sandbox.execute(&script, &agent_key)?;
+    serde_json::to_string(&result).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Apply sandbox changes to a target directory on the host.
+#[tauri::command]
+fn sandbox_apply(
+    execution_id: String,
+    target_dir: String,
+    state: State<AppState>,
+) -> Result<String, String> {
+    let sandbox = state.sandbox.lock().unwrap();
+    let target = std::path::Path::new(&target_dir);
+    let applied = sandbox.apply(&execution_id, target)?;
+    Ok(format!("{} files applied to {}", applied, target_dir))
+}
+
+/// Snap-Back: restore the pre-execution snapshot. All changes disappear.
+#[tauri::command]
+fn sandbox_snapback(snapshot_id: String, state: State<AppState>) -> Result<String, String> {
+    let sandbox = state.sandbox.lock().unwrap();
+    sandbox.snap_back(&snapshot_id)?;
+    Ok(format!(
+        "Snap-Back complete: restored snapshot {}",
+        &snapshot_id[..8]
+    ))
+}
+
+/// Get sandbox execution history.
+#[tauri::command]
+fn sandbox_history(state: State<AppState>) -> String {
+    let sandbox = state.sandbox.lock().unwrap();
+    serde_json::to_string(&sandbox.get_history()).unwrap_or_default()
+}
+
+// ──────────────────────────────────────────────────
 // Application Entry
 // ──────────────────────────────────────────────────
 
@@ -239,9 +289,10 @@ pub fn run() {
     // Initialize Expert Mode pins from YAML defaults
     let expert_pins = ExpertPins::from_yaml_defaults(&sam_logic.expert_mode.default_pins);
 
-    // Initialize Egress Filter and Sentinel
+    // Initialize Egress Filter, Sentinel, and Sandbox
     let egress = EgressFilter::from_sam_logic(&sam_logic);
     let sentinel = Sentinel::new(&sam_logic);
+    let sandbox = Sandbox::new(SandboxConfig::default());
 
     let app_state = AppState {
         sam_logic,
@@ -250,6 +301,7 @@ pub fn run() {
         pending_resync: Mutex::new(Vec::new()),
         egress: Mutex::new(egress),
         sentinel,
+        sandbox: Mutex::new(sandbox),
     };
 
     tauri::Builder::default()
@@ -273,6 +325,10 @@ pub fn run() {
             approve_report,
             dismiss_report,
             is_founder,
+            sandbox_execute,
+            sandbox_apply,
+            sandbox_snapback,
+            sandbox_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running S-ION");

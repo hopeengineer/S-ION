@@ -71,6 +71,25 @@ interface SentinelReport {
   timestamp: string;
 }
 
+interface FileChange {
+  status: string;
+  before: string | null;
+  after: string | null;
+}
+
+interface SandboxResult {
+  execution_id: string;
+  agent_key: string;
+  command: string;
+  stdout: string;
+  stderr: string;
+  exit_code: number;
+  duration_ms: number;
+  timed_out: boolean;
+  file_changes: Record<string, FileChange>;
+  snapshot_id: string;
+}
+
 // ── Model Registry (for Expert Mode UI) ──
 
 const AGENTS = [
@@ -146,6 +165,10 @@ function App() {
 
   // Founder check
   const [isFounder, setIsFounder] = useState(false);
+
+  // Sandbox Action Card state
+  const [actionCard, setActionCard] = useState<SandboxResult | null>(null);
+  const [actionCardExpanded, setActionCardExpanded] = useState(false);
 
   // Apply theme to document
   useEffect(() => {
@@ -635,6 +658,116 @@ function App() {
                 <pre className="consent-json">{JSON.stringify(pendingReport, null, 2)}</pre>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Action Card: Sandbox Execution Preview */}
+        {actionCard && (
+          <div className="action-card">
+            <div className="action-card-header">
+              <div className="action-card-title">
+                <span className="action-card-icon">🏗️</span>
+                <div>
+                  <h3>Sandbox Execution Complete</h3>
+                  <p className="action-card-agent">
+                    Agent: <strong>{actionCard.agent_key}</strong> |
+                    Exit: <span className={actionCard.exit_code === 0 ? "exit-ok" : "exit-fail"}>{actionCard.exit_code}</span> |
+                    {actionCard.duration_ms}ms
+                    {actionCard.timed_out && <span className="exit-fail"> (TIMED OUT)</span>}
+                  </p>
+                </div>
+              </div>
+              <button
+                className="action-card-toggle"
+                onClick={() => setActionCardExpanded(!actionCardExpanded)}
+              >
+                {actionCardExpanded ? "▲ Collapse" : "▼ View Changes"}
+              </button>
+            </div>
+
+            {actionCardExpanded && (
+              <div className="action-card-body">
+                {/* stdout/stderr */}
+                {actionCard.stdout && (
+                  <div className="action-card-output">
+                    <label>Output:</label>
+                    <pre>{actionCard.stdout}</pre>
+                  </div>
+                )}
+                {actionCard.stderr && (
+                  <div className="action-card-output action-card-stderr">
+                    <label>Errors:</label>
+                    <pre>{actionCard.stderr}</pre>
+                  </div>
+                )}
+
+                {/* File Diff Viewer */}
+                {Object.keys(actionCard.file_changes).length > 0 && (
+                  <div className="action-card-diffs">
+                    <label>File Changes ({Object.keys(actionCard.file_changes).length}):</label>
+                    {Object.entries(actionCard.file_changes).map(([name, change]) => (
+                      <div key={name} className={`action-diff ${change.status}`}>
+                        <div className="action-diff-header">
+                          <span className="action-diff-status">
+                            {change.status === "added" ? "+" : change.status === "deleted" ? "-" : "~"}
+                          </span>
+                          <span className="action-diff-name">{name}</span>
+                          <span className="action-diff-label">{change.status}</span>
+                        </div>
+                        {change.before && (
+                          <pre className="action-diff-before">- {change.before.slice(0, 500)}</pre>
+                        )}
+                        {change.after && (
+                          <pre className="action-diff-after">+ {change.after.slice(0, 500)}</pre>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  className="action-card-copy"
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(actionCard, null, 2));
+                    const btn = document.querySelector(".action-card-copy") as HTMLButtonElement;
+                    if (btn) { btn.textContent = "Copied!"; setTimeout(() => btn.textContent = "📋 Copy Full Result", 1500); }
+                  }}
+                >
+                  📋 Copy Full Result
+                </button>
+              </div>
+            )}
+
+            <div className="action-card-actions">
+              <button
+                className="action-apply"
+                onClick={async () => {
+                  try {
+                    await invoke("sandbox_apply", { executionId: actionCard.execution_id, targetDir: "." });
+                    setActionCard(null);
+                    setActionCardExpanded(false);
+                  } catch (err) {
+                    console.error("Apply failed:", err);
+                  }
+                }}
+              >
+                ✅ Apply Changes
+              </button>
+              <button
+                className="action-snapback"
+                onClick={async () => {
+                  try {
+                    await invoke("sandbox_snapback", { snapshotId: actionCard.snapshot_id });
+                    setActionCard(null);
+                    setActionCardExpanded(false);
+                  } catch (err) {
+                    console.error("Snap-Back failed:", err);
+                  }
+                }}
+              >
+                ⏪ Snap-Back
+              </button>
+            </div>
           </div>
         )}
       </section>

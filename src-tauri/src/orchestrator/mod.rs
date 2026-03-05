@@ -1,6 +1,7 @@
 pub mod egress;
 pub mod heartbeat;
 pub mod router;
+pub mod sandbox;
 pub mod sentinel;
 pub mod translator;
 
