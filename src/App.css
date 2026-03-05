@@ -156,8 +156,9 @@ body {
 }
 
 .titlebar-logo img {
-  width: 18px;
-  height: 18px;
+  height: 22px;
+  width: auto;
+  object-fit: contain;
 }
 
 .titlebar-logo span {
@@ -287,8 +288,9 @@ body {
 }
 
 .hero-icon {
-  width: 80px;
-  height: 80px;
+  height: 120px;
+  width: auto;
+  object-fit: contain;
   animation: pulse 3s ease-in-out infinite;
 }
 
