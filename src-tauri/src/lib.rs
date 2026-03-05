@@ -1,6 +1,7 @@
 mod orchestrator;
 
 use orchestrator::egress::EgressFilter;
+use orchestrator::heartbeat::BridgeHeartbeat;
 use orchestrator::router::{self, DispatchResult, ExpertPins, RuntimeMode};
 use orchestrator::sandbox::{Sandbox, SandboxConfig};
 use orchestrator::sentinel::Sentinel;
@@ -23,6 +24,8 @@ struct AppState {
     sentinel: Sentinel,
     /// Sandbox: Firecracker-ready code isolation with Snap-Back.
     sandbox: Mutex<Sandbox>,
+    /// Bridge Heartbeat: secure connection to Railway for CoPaw missions.
+    heartbeat: BridgeHeartbeat,
 }
 
 // ──────────────────────────────────────────────────
@@ -115,6 +118,17 @@ async fn dispatch_smart(intent: String, state: State<'_, AppState>) -> Result<St
     // Phase 3: Grandma-Speak Interceptor
     if let Some(e) = &result.error {
         let grandma_msg = orchestrator::translator::translate_error_to_grandma(e, &sam_logic).await;
+
+        // Phase 4: Sentinel auto-capture on Smart Mode errors
+        state.sentinel.capture_error(
+            "dispatch_error",
+            "SMART_MODE_FAIL",
+            e,
+            &result.model_name,
+            &result.routed_to,
+            None,
+        );
+
         result.error = Some(format!("{}\n\n[Dev Details: {}]", grandma_msg, e));
     }
 
@@ -235,6 +249,67 @@ fn sandbox_history(state: State<AppState>) -> String {
 }
 
 // ──────────────────────────────────────────────────
+// Egress Filter IPC Commands
+// ──────────────────────────────────────────────────
+
+/// Validate a URL against the egress allowlist.
+#[tauri::command]
+fn validate_egress(
+    url: String,
+    agent_key: String,
+    state: State<AppState>,
+) -> Result<String, String> {
+    let egress = state.egress.lock().unwrap();
+    egress.validate(&url, &agent_key)?;
+    Ok(format!("Egress pass: {}", url))
+}
+
+/// Add a user-defined domain to the egress allowlist at runtime.
+#[tauri::command]
+fn add_egress_domain(domain: String, state: State<AppState>) -> String {
+    let mut egress = state.egress.lock().unwrap();
+    egress.add_user_domain(&domain);
+    format!("Added {} to egress allowlist", domain)
+}
+
+// ──────────────────────────────────────────────────
+// Bridge Heartbeat IPC Commands
+// ──────────────────────────────────────────────────
+
+/// Initiate the Secret Handshake with the Railway bridge.
+#[tauri::command]
+async fn bridge_handshake(state: State<'_, AppState>) -> Result<String, String> {
+    match state.heartbeat.handshake().await {
+        Ok(true) => Ok("Bridge handshake: SUCCESS".into()),
+        Ok(false) => Ok("Bridge offline (no URL configured)".into()),
+        Err(e) => Err(e),
+    }
+}
+
+/// Heartbeat pulse: check for and claim the next pending mission.
+#[tauri::command]
+async fn bridge_pulse(state: State<'_, AppState>) -> Result<String, String> {
+    match state.heartbeat.pulse().await {
+        Ok(Some(mission)) => serde_json::to_string(&mission).map_err(|e| e.to_string()),
+        Ok(None) => Ok("null".into()),
+        Err(e) => Err(e),
+    }
+}
+
+/// Check how many missions are waiting on the bridge.
+#[tauri::command]
+async fn bridge_pending(state: State<'_, AppState>) -> Result<String, String> {
+    let count = state.heartbeat.check_pending().await?;
+    Ok(format!("{}", count))
+}
+
+/// Get locally cached missions.
+#[tauri::command]
+fn bridge_local_missions(state: State<AppState>) -> String {
+    serde_json::to_string(&state.heartbeat.get_local_missions()).unwrap_or_default()
+}
+
+// ──────────────────────────────────────────────────
 // Application Entry
 // ──────────────────────────────────────────────────
 
@@ -289,10 +364,23 @@ pub fn run() {
     // Initialize Expert Mode pins from YAML defaults
     let expert_pins = ExpertPins::from_yaml_defaults(&sam_logic.expert_mode.default_pins);
 
-    // Initialize Egress Filter, Sentinel, and Sandbox
+    // Initialize Egress Filter, Sentinel, Sandbox, and Bridge Heartbeat
     let egress = EgressFilter::from_sam_logic(&sam_logic);
     let sentinel = Sentinel::new(&sam_logic);
-    let sandbox = Sandbox::new(SandboxConfig::default());
+    let sandbox_config = SandboxConfig::default();
+    println!(
+        "🏗️  Sandbox config: memory_limit={}MB, timeout={}s, network={}",
+        sandbox_config.memory_limit / (1024 * 1024),
+        sandbox_config.timeout.as_secs(),
+        if sandbox_config.network_enabled {
+            "enabled"
+        } else {
+            "disabled (jailed)"
+        }
+    );
+    let sandbox = Sandbox::new(sandbox_config);
+    println!("🏗️  Sandbox backend: {}", sandbox.backend.label());
+    let heartbeat = BridgeHeartbeat::new(&sam_logic.privacy.sentinel.railway_endpoint);
 
     let app_state = AppState {
         sam_logic,
@@ -302,6 +390,7 @@ pub fn run() {
         egress: Mutex::new(egress),
         sentinel,
         sandbox: Mutex::new(sandbox),
+        heartbeat,
     };
 
     tauri::Builder::default()
@@ -329,6 +418,12 @@ pub fn run() {
             sandbox_apply,
             sandbox_snapback,
             sandbox_history,
+            validate_egress,
+            add_egress_domain,
+            bridge_handshake,
+            bridge_pulse,
+            bridge_pending,
+            bridge_local_missions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running S-ION");

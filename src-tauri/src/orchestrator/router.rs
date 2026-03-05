@@ -283,7 +283,7 @@ pub async fn call_openai_compatible(
 // Smart Mode Dispatcher
 // ──────────────────────────────────────────────────
 
-/// Dispatches an intent in Smart Mode: triage with Gemini Flash → route to best model.
+/// Dispatches an intent in Smart Mode: triage with Gemini Flash → route to best model → call it.
 pub async fn dispatch_smart(intent: &str, sam_logic: &SamLogic) -> DispatchResult {
     // Step 1: Triage with Gemini Flash
     let triage = match call_gemini_flash_triage(intent, sam_logic).await {
@@ -302,14 +302,63 @@ pub async fn dispatch_smart(intent: &str, sam_logic: &SamLogic) -> DispatchResul
     // Step 2: Resolve agent from triage result
     let (agent_key, model_name, designation) = resolve_agent(&triage.route_to, sam_logic);
 
+    // Step 3: Call the routed agent's API
+    let (response, error) = match agent_key.as_str() {
+        "analyst" => {
+            // DeepSeek V3 via dedicated client
+            match call_deepseek(intent, sam_logic).await {
+                Ok(r) => (Some(r), None),
+                Err(e) => (None, Some(e)),
+            }
+        }
+        "commander" | "scout" => {
+            // OpenAI-compatible APIs (Kimi / GPT)
+            let agent = match agent_key.as_str() {
+                "commander" => &sam_logic.swarm.commander,
+                _ => &sam_logic.swarm.scout,
+            };
+            let api_key = env::var(&agent.api_env_key).unwrap_or_default();
+            if api_key.is_empty() {
+                (None, Some(format!("Missing env: {}", agent.api_env_key)))
+            } else {
+                match call_openai_compatible(
+                    intent,
+                    &api_key,
+                    &agent.api_base_url,
+                    &agent.model,
+                    &format!(
+                        "You are S-ION's {} ({}). {}\n{}",
+                        agent.designation,
+                        agent.model,
+                        agent.role,
+                        sam_logic.constitution.zero_assumption_directive
+                    ),
+                )
+                .await
+                {
+                    Ok(r) => (Some(r), None),
+                    Err(e) => (None, Some(e)),
+                }
+            }
+        }
+        _ => {
+            // For agents without direct API (visionary, builder, etc.),
+            // fall back to DeepSeek as a cost-effective default
+            match call_deepseek(intent, sam_logic).await {
+                Ok(r) => (Some(r), None),
+                Err(e) => (None, Some(e)),
+            }
+        }
+    };
+
     DispatchResult {
         mode: "smart".into(),
         triage: Some(triage),
         routed_to: agent_key,
         model_name,
         designation,
-        response: None,
-        error: None,
+        response,
+        error,
     }
 }
 
