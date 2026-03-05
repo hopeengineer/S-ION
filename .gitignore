@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 target/
 Cargo.lock
+sentinel-bridge/node_modules/
+sentinel-bridge/dist/
+sentinel-bridge/*.db
