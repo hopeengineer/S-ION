@@ -257,7 +257,7 @@ Respond ONLY with valid JSON:
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
-            "model": "kimi-k2.5",
+            "model": "kimi-k2-0201",
             "messages": [
                 { "role": "system", "content": system_prompt },
                 { "role": "user", "content": intent }

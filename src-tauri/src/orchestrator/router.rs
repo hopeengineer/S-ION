@@ -89,19 +89,12 @@ pub async fn call_gemini_flash_triage(
         .map(|c| format!("- {}: {} → routes to {}", c.id, c.description, c.route_to))
         .collect();
 
-    let system_prompt = format!(
-        r#"You are S-ION's Smart Mode Triage Router. Classify the user's intent into exactly one category.
-
-Available categories:
-{}
-
-Respond ONLY with valid JSON:
-{{
-  "category": "<category_id>",
-  "route_to": "<agent_key>",
-  "reasoning": "<one sentence why>",
-  "confidence": <0.0 to 1.0>
-}}"#,
+    let system_instruction = format!(
+        "You are a JSON-only intent classifier. You must respond with ONLY a raw JSON object, nothing else.\n\
+        Classify the user's intent into exactly one category.\n\
+        Categories:\n{}\n\n\
+        Your entire response must be exactly one JSON object: \
+        {{\"category\":\"<id>\",\"route_to\":\"<agent>\",\"reasoning\":\"<why>\",\"confidence\":<0.0-1.0>}}",
         categories_desc.join("\n")
     );
 
@@ -115,17 +108,19 @@ Respond ONLY with valid JSON:
         .post(&url)
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
+            "system_instruction": {
+                "parts": [{ "text": system_instruction }]
+            },
             "contents": [
                 {
                     "parts": [
-                        { "text": format!("{}\n\nUser intent: {}", system_prompt, intent) }
+                        { "text": intent }
                     ]
                 }
             ],
             "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": 256,
-                "responseMimeType": "application/json"
+                "temperature": 0.05,
+                "maxOutputTokens": 512
             }
         }))
         .send()
@@ -147,9 +142,17 @@ Respond ONLY with valid JSON:
 
     let content = resp_json["candidates"][0]["content"]["parts"][0]["text"]
         .as_str()
-        .ok_or_else(|| "No content in Gemini triage response".to_string())?;
+        .ok_or_else(|| {
+            format!(
+                "No content in Gemini triage response. Full response: {}",
+                body
+            )
+        })?;
 
+    // Use extract_json to handle any remaining preamble
     let json_str = extract_json(content);
+
+    println!("🔎 Gemini raw triage: {}", json_str);
 
     let triage: TriageResult = serde_json::from_str(&json_str)
         .map_err(|e| format!("Failed to parse triage result: {} — raw: {}", e, content))?;

@@ -112,7 +112,7 @@ swarm:
 # Fast (~200ms) intent classification before dispatch
 # ──────────────────────────────────────
 smart_mode:
-  triage_model: "gemini-2.0-flash"
+  triage_model: "gemini-3-flash-preview"
   triage_api_env_key: "GEMINI_API_KEY"
   triage_api_base_url: "https://generativelanguage.googleapis.com/v1beta"
   categories:

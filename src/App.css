@@ -1,6 +1,6 @@
 /* ──────────────────────────────────────────────────
    S-ION Design System
-   Blood Orange (#FF4500) on Pure White (#FFFFFF)
+   Blood Orange (#FF4500) — Light/Dark Mode
    Typography: Inter
    ────────────────────────────────────────────────── */
 
@@ -12,7 +12,7 @@
   --sion-accent-glow: rgba(255, 69, 0, 0.15);
   --sion-accent-soft: #FF6B35;
 
-  /* Neutrals */
+  /* Light Mode Neutrals (default) */
   --sion-bg: #FFFFFF;
   --sion-bg-secondary: #FAFAFA;
   --sion-bg-tertiary: #F5F5F5;
@@ -21,6 +21,23 @@
   --sion-text-primary: #1A1A1A;
   --sion-text-secondary: #6B6B6B;
   --sion-text-tertiary: #9E9E9E;
+
+  /* Sidebar (light mode — premium white) */
+  --sion-sidebar-bg: #FAFAFA;
+  --sion-sidebar-border: #E8E8E8;
+  --sion-sidebar-card-bg: #FFFFFF;
+  --sion-sidebar-card-border: #EEEEEE;
+  --sion-sidebar-card-hover-bg: #F5F5F5;
+  --sion-sidebar-label: #9E9E9E;
+  --sion-sidebar-text: #6B6B6B;
+  --sion-sidebar-text-muted: #BFBFBF;
+  --sion-sidebar-pin-bg: #FFFFFF;
+  --sion-sidebar-pin-border: #E8E8E8;
+  --sion-sidebar-pin-text: #9E9E9E;
+  --sion-sidebar-pin-hover-bg: #F5F5F5;
+  --sion-sidebar-pin-hover-border: #D0D0D0;
+  --sion-sidebar-pin-hover-text: #1A1A1A;
+  --sion-sidebar-health-track: #F0F0F0;
 
   /* Titlebar */
   --sion-titlebar-height: 38px;
@@ -41,6 +58,39 @@
   --sion-radius-md: 10px;
   --sion-radius-lg: 16px;
   --sion-radius-full: 9999px;
+}
+
+/* ── Dark Mode ── */
+[data-theme="dark"] {
+  --sion-bg: #0D0D0D;
+  --sion-bg-secondary: #141414;
+  --sion-bg-tertiary: #1A1A1A;
+  --sion-border: rgba(255, 255, 255, 0.08);
+  --sion-border-hover: rgba(255, 255, 255, 0.15);
+  --sion-text-primary: #F0F0F0;
+  --sion-text-secondary: rgba(255, 255, 255, 0.6);
+  --sion-text-tertiary: rgba(255, 255, 255, 0.35);
+  --sion-accent-light: rgba(255, 69, 0, 0.12);
+
+  --sion-sidebar-bg: #0A0A0A;
+  --sion-sidebar-border: rgba(255, 255, 255, 0.06);
+  --sion-sidebar-card-bg: rgba(255, 255, 255, 0.03);
+  --sion-sidebar-card-border: rgba(255, 255, 255, 0.06);
+  --sion-sidebar-card-hover-bg: rgba(255, 255, 255, 0.05);
+  --sion-sidebar-label: rgba(255, 255, 255, 0.35);
+  --sion-sidebar-text: rgba(255, 255, 255, 0.5);
+  --sion-sidebar-text-muted: rgba(255, 255, 255, 0.25);
+  --sion-sidebar-pin-bg: rgba(255, 255, 255, 0.02);
+  --sion-sidebar-pin-border: rgba(255, 255, 255, 0.08);
+  --sion-sidebar-pin-text: rgba(255, 255, 255, 0.5);
+  --sion-sidebar-pin-hover-bg: rgba(255, 255, 255, 0.06);
+  --sion-sidebar-pin-hover-border: rgba(255, 255, 255, 0.15);
+  --sion-sidebar-pin-hover-text: rgba(255, 255, 255, 0.8);
+  --sion-sidebar-health-track: rgba(255, 255, 255, 0.06);
+
+  --sion-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --sion-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --sion-shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Reset ── */
@@ -121,8 +171,28 @@ body {
 .titlebar-controls {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 8px;
   -webkit-app-region: no-drag;
+}
+
+.theme-toggle {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sion-bg-tertiary);
+  border: 1px solid var(--sion-border);
+  border-radius: var(--sion-radius-full);
+  cursor: pointer;
+  color: var(--sion-text-secondary);
+  transition: all var(--sion-transition);
+}
+
+.theme-toggle:hover {
+  color: var(--sion-text-primary);
+  border-color: var(--sion-border-hover);
+  transform: scale(1.05);
 }
 
 .titlebar-btn {
@@ -599,303 +669,381 @@ body {
   width: 16px;
   height: 16px;
   border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
 
-  /* ── Content Wrapper (sidebar layout) ── */
-  .content-wrapper {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
+/* ── Content Wrapper (sidebar layout) ── */
+.content-wrapper {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.app-layout.sidebar-open .main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Triage Result (Smart Mode) ── */
+.triage-result {
+  width: 100%;
+  max-width: 640px;
+  margin-top: 16px;
+  padding: 16px 20px;
+  background: var(--sion-bg);
+  border: 1px solid var(--sion-border);
+  border-radius: var(--sion-radius-md);
+  animation: fadeInUp var(--sion-transition-slow) both;
+  position: relative;
+  overflow: hidden;
+}
+
+.triage-result::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, #F39C12, #E67E22);
+  border-radius: 3px 0 0 3px;
+}
+
+.expert-result::before {
+  background: linear-gradient(180deg, var(--sion-accent), #E63E00);
+}
+
+.triage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.triage-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #F39C12;
+}
+
+.triage-model {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--sion-text-tertiary);
+  letter-spacing: 0.5px;
+}
+
+.triage-reasoning {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--sion-text-secondary);
+  margin-bottom: 10px;
+}
+
+.triage-route {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--sion-border);
+}
+
+.triage-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--sion-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.triage-agent {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.triage-confidence {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--sion-text-tertiary);
+  margin-left: auto;
+  padding: 2px 8px;
+  background: var(--sion-bg-tertiary);
+  border-radius: var(--sion-radius-full);
+}
+
+.expert-result .triage-badge {
+  color: var(--sion-accent);
+}
+
+/* ── Category Selector (Expert Mode) ── */
+.category-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.category-chip {
+  padding: 8px 18px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border: 1px solid var(--sion-border);
+  border-radius: var(--sion-radius-full);
+  background: var(--sion-bg);
+  color: var(--sion-text-secondary);
+  cursor: pointer;
+  transition: all var(--sion-transition);
+}
+
+.category-chip:hover {
+  border-color: var(--sion-border-hover);
+  color: var(--sion-text-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--sion-shadow-sm);
+}
+
+.category-chip.active {
+  background: var(--sion-text-primary);
+  color: white;
+  border-color: var(--sion-text-primary);
+  box-shadow: var(--sion-shadow-md);
+}
+
+/* ── Expert Sidebar (Premium Cockpit) ── */
+.expert-sidebar {
+  width: 340px;
+  min-width: 340px;
+  background: var(--sion-sidebar-bg);
+  border-left: 1px solid var(--sion-sidebar-border);
+  padding: 28px 24px;
+  overflow-y: auto;
+  animation: slideInRight var(--sion-transition-slow) both;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Custom scrollbar for sidebar */
+.expert-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.expert-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.expert-sidebar::-webkit-scrollbar-thumb {
+  background: var(--sion-sidebar-pin-border);
+  border-radius: 2px;
+}
+
+.sidebar-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--sion-sidebar-label);
+  margin-bottom: 6px;
+}
+
+.sidebar-subtitle {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--sion-sidebar-text-muted);
+  margin-bottom: 28px;
+}
+
+.pin-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pin-card {
+  padding: 14px 16px;
+  background: var(--sion-sidebar-card-bg);
+  border: 1px solid var(--sion-sidebar-card-border);
+  border-radius: 12px;
+  transition: all var(--sion-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.pin-card:hover {
+  background: var(--sion-sidebar-card-hover-bg);
+  border-color: var(--sion-sidebar-pin-hover-border);
+}
+
+.pin-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--sion-sidebar-label);
+  margin-bottom: 10px;
+}
+
+.pin-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pin-option {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--sion-sidebar-pin-border);
+  border-radius: 8px;
+  background: var(--sion-sidebar-pin-bg);
+  color: var(--sion-sidebar-pin-text);
+  cursor: pointer;
+  transition: all var(--sion-transition);
+}
+
+.pin-option:hover {
+  background: var(--sion-sidebar-pin-hover-bg);
+  border-color: var(--sion-sidebar-pin-hover-border);
+  color: var(--sion-sidebar-pin-hover-text);
+  transform: translateY(-1px);
+}
+
+.pin-option.pinned {
+  border-color: var(--sion-accent);
+  background: rgba(255, 69, 0, 0.08);
+  color: var(--sion-accent);
+  box-shadow: 0 0 12px rgba(255, 69, 0, 0.1), inset 0 0 20px rgba(255, 69, 0, 0.03);
+}
+
+.pin-emoji {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.pin-model-name {
+  font-weight: 500;
+}
+
+.pin-active {
+  font-size: 9px;
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+/* ── Provider Health Section ── */
+.sidebar-info {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--sion-sidebar-border);
+}
+
+.sidebar-info h3 {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--sion-sidebar-label);
+  margin-bottom: 16px;
+}
+
+.health-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 6px 0;
+}
+
+.health-emoji {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+  line-height: 1;
+}
+
+.health-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--sion-sidebar-text);
+  width: 76px;
+  flex-shrink: 0;
+}
+
+.health-bar {
+  flex: 1;
+  height: 3px;
+  background: var(--sion-sidebar-health-track);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.health-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--sion-transition-slow);
+  opacity: 0.85;
+}
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
   }
 
-  .app-layout.sidebar-open .main-content {
-    flex: 1;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
   }
 
-  /* ── Triage Result (Smart Mode) ── */
-  .triage-result {
-    width: 100%;
-    max-width: 640px;
-    margin-top: 16px;
-    padding: 14px 18px;
-    background: var(--sion-bg-secondary);
-    border: 1px solid var(--sion-border);
-    border-radius: var(--sion-radius-md);
-    animation: fadeInUp var(--sion-transition-slow) both;
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
   }
 
-  .triage-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 6px;
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
+    opacity: 1;
   }
 
-  .triage-badge {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: #F39C12;
+  50% {
+    opacity: 0.4;
   }
+}
 
-  .triage-model {
-    font-size: 11px;
-    color: var(--sion-text-tertiary);
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
-
-  .triage-reasoning {
-    font-size: 13px;
-    color: var(--sion-text-secondary);
-    margin-bottom: 8px;
-  }
-
-  .triage-route {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .triage-label {
-    font-size: 12px;
-    color: var(--sion-text-tertiary);
-  }
-
-  .triage-agent {
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .triage-confidence {
-    font-size: 11px;
-    color: var(--sion-text-tertiary);
-    margin-left: auto;
-  }
-
-  .expert-result .triage-badge {
-    color: var(--sion-accent);
-  }
-
-  /* ── Category Selector (Expert Mode) ── */
-  .category-selector {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .category-chip {
-    padding: 6px 14px;
-    font-size: 12px;
-    font-weight: 500;
-    border: 1px solid var(--sion-border);
-    border-radius: var(--sion-radius-full);
-    background: var(--sion-bg);
-    color: var(--sion-text-secondary);
-    cursor: pointer;
-    transition: all var(--sion-transition-fast);
-  }
-
-  .category-chip:hover {
-    border-color: var(--sion-accent);
-    color: var(--sion-accent);
-  }
-
-  .category-chip.active {
-    background: var(--sion-accent);
-    color: white;
-    border-color: var(--sion-accent);
-  }
-
-  /* ── Expert Sidebar (Mixing Board) ── */
-  .expert-sidebar {
-    width: 320px;
-    min-width: 320px;
-    background: var(--sion-bg-secondary);
-    border-left: 1px solid var(--sion-border);
-    padding: 20px;
-    overflow-y: auto;
-    animation: slideInRight var(--sion-transition-slow) both;
-  }
-
-  .sidebar-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--sion-text-primary);
-    margin-bottom: 4px;
-  }
-
-  .sidebar-subtitle {
-    font-size: 12px;
-    color: var(--sion-text-tertiary);
-    margin-bottom: 20px;
-  }
-
-  .pin-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .pin-card {
-    padding: 12px;
-    background: var(--sion-bg);
-    border: 1px solid var(--sion-border);
-    border-radius: var(--sion-radius-md);
-  }
-
-  .pin-label {
-    display: block;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--sion-text-secondary);
-    margin-bottom: 8px;
-  }
-
-  .pin-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .pin-option {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    font-size: 11px;
-    border: 1px solid var(--sion-border);
-    border-radius: var(--sion-radius-sm);
-    background: var(--sion-bg);
-    color: var(--sion-text-secondary);
-    cursor: pointer;
-    transition: all var(--sion-transition-fast);
-  }
-
-  .pin-option:hover {
-    border-color: var(--sion-accent);
-    color: var(--sion-text-primary);
-  }
-
-  .pin-option.pinned {
-    border-color: var(--sion-accent);
-    background: var(--sion-accent-light);
-    color: var(--sion-accent);
-    box-shadow: 0 0 8px rgba(255, 69, 0, 0.15);
-  }
-
-  .pin-emoji {
-    font-size: 12px;
-  }
-
-  .pin-model-name {
-    font-weight: 500;
-  }
-
-  .pin-active {
-    font-size: 10px;
-    margin-left: 2px;
-  }
-
-  /* ── Provider Health Bars ── */
-  .sidebar-info {
-    margin-top: 24px;
-  }
-
-  .sidebar-info h3 {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--sion-text-secondary);
-    margin-bottom: 12px;
-  }
-
-  .health-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .health-emoji {
-    font-size: 14px;
-    width: 22px;
-    text-align: center;
-  }
-
-  .health-name {
-    font-size: 11px;
-    color: var(--sion-text-secondary);
-    width: 80px;
-  }
-
-  .health-bar {
-    flex: 1;
-    height: 4px;
-    background: var(--sion-bg-tertiary);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .health-fill {
-    height: 100%;
-    border-radius: 2px;
-    transition: width var(--sion-transition);
-  }
-
-  /* ── Animations ── */
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(16px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes slideInRight {
-    from {
-      opacity: 0;
-      transform: translateX(40px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes pulse {
-
-    0%,
-    100% {
-      transform: scale(1);
-    }
-
-    50% {
-      transform: scale(1.03);
-    }
-  }
-
-  @keyframes blink {
-
-    0%,
-    100% {
-      opacity: 1;
-    }
-
-    50% {
-      opacity: 0.4;
-    }
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+}
