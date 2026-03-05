@@ -75,6 +75,12 @@ When working on S-ION, **proactively recommend model switches** based on the tas
 - Local-only storage, zero cloud sync
 - All execution in Firecracker Sandbox
 
+## 🐛 Debugging Protocol
+
+- **NEVER speculate** on the cause of a bug. Always write a script or test to reproduce, diagnose, and verify the fix.
+- Do not say "likely" or "probably" when diagnosing issues. Run actual code to confirm.
+- Keep debugging until the issue is solved with proof (passing test, successful curl, etc.).
+
 ## 📁 Project Structure
 
 ```

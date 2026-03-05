@@ -7,6 +7,7 @@ guardian_model: "Claude-Opus-4.6"
 # ──────────────────────────────────────
 constitution:
   zero_assumption_directive: "You MUST NEVER assume facts, APIs, or states without verifying through research, search, or absolute proof. Hallucination is strictly forbidden. If you do not know definitively, you must admit it or execute a search tool. This is a hard constraint."
+  no_speculation_directive: "When diagnosing any issue, you MUST NEVER speculate on the cause. Always write a test, script, or diagnostic command to reproduce, research, and debug the problem. Continue debugging until the fix is verified with proof (passing test, successful response, confirmed output). Words like 'likely', 'probably', or 'might be' are forbidden in error analysis."
 
 # ──────────────────────────────────────
 # Senior Engineering DNA
@@ -31,7 +32,7 @@ privacy:
     - "api.deepseek.com"
   user_allowlist: []
   sentinel:
-    railway_endpoint: ""
+    railway_endpoint: "https://sion-bridge-production.up.railway.app"
     developer_id: "b29c02c0-b02d-4862-9ab0-a0c600a00e83"
     max_local_events: 200
     batch_interval_secs: 300

@@ -252,11 +252,18 @@ fn load_or_create_install_id() -> String {
 
 /// Send a scrubbed report to the Railway /telemetry endpoint.
 async fn send_to_railway(endpoint: &str, report: &SentinelReport) -> Result<String, String> {
+    let token = std::env::var("SION_BRIDGE_TOKEN").unwrap_or_default();
     let client = reqwest::Client::new();
-    let res = client
+    let mut req = client
         .post(format!("{}/telemetry", endpoint))
         .header("Content-Type", "application/json")
-        .json(report)
+        .json(report);
+
+    if !token.is_empty() {
+        req = req.header("Authorization", format!("Bearer {}", token));
+    }
+
+    let res = req
         .send()
         .await
         .map_err(|e| format!("Sentinel send failed: {}", e))?;

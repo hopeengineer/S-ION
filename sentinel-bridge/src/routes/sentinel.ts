@@ -26,7 +26,17 @@ export function sentinelRouter(db: Database.Database): Router {
         }
 
         try {
-            insertStmt.run(report);
+            insertStmt.run({
+                install_id: report.install_id,
+                app_version: report.app_version,
+                event_type: report.event_type,
+                error_code: report.error_code,
+                logic_trace: report.logic_trace,
+                model_used: report.model_used,
+                agent_key: report.agent_key,
+                blocked_domain: report.blocked_domain ?? null,
+                timestamp: report.timestamp,
+            });
             console.log(`🔭 Report: [${report.event_type}] ${report.error_code} from ${report.agent_key}`);
             res.json({ status: "received" });
         } catch (err: any) {
