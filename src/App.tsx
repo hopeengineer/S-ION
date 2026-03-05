@@ -215,7 +215,7 @@ function App() {
 
         <section className="titlebar-drag">
           <nav className="titlebar-logo">
-            <img src="/sion-icon.svg" alt="S-ION" />
+            <img src="/sion-icon.png" alt="S-ION" />
             <span>S-ION</span>
           </nav>
         </section>
@@ -239,7 +239,7 @@ function App() {
         {/* ── Main Content ── */}
         <section className="main-content">
           <article className="hero">
-            <img className="hero-icon" src="/sion-icon.svg" alt="S-ION" />
+            <img className="hero-icon" src="/sion-icon.png" alt="S-ION" />
             <h1>What can <span>S-ION</span> do for you?</h1>
             <p>
               {mode === "smart"
