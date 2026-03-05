@@ -1176,6 +1176,50 @@ body {
   padding: 32px 0;
 }
 
+/* Security Header with Copy Button */
+.security-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.security-header .sidebar-title,
+.security-header .sidebar-subtitle {
+  margin: 0;
+}
+
+.copy-log-btn,
+.copy-json-btn {
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--sion-bg-secondary);
+  border: 1px solid var(--sion-border);
+  border-radius: var(--sion-radius-sm);
+  color: var(--sion-text-secondary);
+  cursor: pointer;
+  transition: all var(--sion-transition-fast);
+  white-space: nowrap;
+}
+
+.copy-log-btn:hover,
+.copy-json-btn:hover {
+  color: var(--sion-accent);
+  border-color: var(--sion-accent);
+}
+
+.consent-json-wrap {
+  position: relative;
+  margin-top: 10px;
+}
+
+.consent-json-wrap .copy-json-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
 .security-event {
   display: flex;
   align-items: center;

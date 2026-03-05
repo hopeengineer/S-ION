@@ -530,8 +530,24 @@ function App() {
             {/* Security Tab */}
             {sidebarTab === "security" && (
               <>
-                <h2 className="sidebar-title">Security Dashboard</h2>
-                <p className="sidebar-subtitle">Real-time egress monitoring</p>
+                <div className="security-header">
+                  <div>
+                    <h2 className="sidebar-title">Security Dashboard</h2>
+                    <p className="sidebar-subtitle">Real-time egress monitoring</p>
+                  </div>
+                  {securityLog.length > 0 && (
+                    <button
+                      className="copy-log-btn"
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(securityLog, null, 2));
+                        const btn = document.querySelector(".copy-log-btn") as HTMLButtonElement;
+                        if (btn) { btn.textContent = "Copied!"; setTimeout(() => btn.textContent = "📋 Copy Log", 1500); }
+                      }}
+                    >
+                      📋 Copy Log
+                    </button>
+                  )}
+                </div>
 
                 <div className="security-log">
                   {securityLog.length === 0 ? (
@@ -605,7 +621,19 @@ function App() {
               </button>
             </div>
             {showReportJson && (
-              <pre className="consent-json">{JSON.stringify(pendingReport, null, 2)}</pre>
+              <div className="consent-json-wrap">
+                <button
+                  className="copy-json-btn"
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(pendingReport, null, 2));
+                    const btn = document.querySelector(".copy-json-btn") as HTMLButtonElement;
+                    if (btn) { btn.textContent = "Copied!"; setTimeout(() => btn.textContent = "📋 Copy", 1500); }
+                  }}
+                >
+                  📋 Copy
+                </button>
+                <pre className="consent-json">{JSON.stringify(pendingReport, null, 2)}</pre>
+              </div>
             )}
           </div>
         )}

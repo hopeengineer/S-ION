@@ -32,7 +32,7 @@ privacy:
   user_allowlist: []
   sentinel:
     railway_endpoint: ""
-    developer_id: ""
+    developer_id: "b29c02c0-b02d-4862-9ab0-a0c600a00e83"
     max_local_events: 200
     batch_interval_secs: 300
 
