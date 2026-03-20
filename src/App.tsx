@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { invoke } from "@tauri-apps/api/core";
+import { commands, type SecurityEvent, type SentinelReport, type SandboxResult } from "./bindings";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -56,44 +56,7 @@ interface DispatchResult {
   error: string | null;
 }
 
-interface SecurityEvent {
-  timestamp: string;
-  domain: string;
-  full_url: string;
-  status: string;
-  agent_key: string;
-}
-
-interface SentinelReport {
-  install_id: string;
-  app_version: string;
-  event_type: string;
-  error_code: string;
-  logic_trace: string;
-  model_used: string;
-  agent_key: string;
-  blocked_domain: string | null;
-  timestamp: string;
-}
-
-interface SandboxResult {
-  execution_id: string;
-  agent_key: string;
-  command: string;
-  stdout: string;
-  stderr: string;
-  exit_code: number;
-  duration_ms: number;
-  timed_out: boolean;
-  file_changes: Record<string, FileChange>;
-  snapshot_id: string;
-}
-
-interface FileChange {
-  status: string;
-  before: string | null;
-  after: string | null;
-}
+// SecurityEvent, SentinelReport, SandboxResult, FileChange → imported from bindings.ts
 
 // Phase 7: Orchestration Loop
 interface ActionEnvelope {
@@ -212,16 +175,16 @@ function App() {
 
   useEffect(() => {
     // Hydrate state from Rust backend on mount
-    invoke<Record<string, string>>("get_model_pins").then(setPins).catch(() => { });
-    invoke<boolean>("is_founder").then(setIsFounder).catch(() => { });
-    invoke<string>("get_mode").then((m) => {
+    commands.getModelPins().then((p) => setPins(p as Record<string, string>)).catch(() => { });
+    commands.isFounder().then(setIsFounder).catch(() => { });
+    commands.getMode().then((m) => {
       if (m === "Smart" || m === "Expert") setMode(m.toLowerCase() as "smart" | "expert");
     }).catch(() => { });
-    invoke<{ background: string; accent: string }>("get_theme").then((t) => {
+    commands.getTheme().then((t) => {
       document.documentElement.style.setProperty("--sion-accent", t.accent);
     }).catch(() => { });
     // Drain any pending messages from sleep/wake
-    invoke<string[]>("resync_messages").then((msgs) => {
+    commands.resyncMessages().then((msgs) => {
       msgs.forEach((m) => console.log("🔄 Resynced:", m));
     }).catch(() => { });
   }, []);
@@ -244,10 +207,10 @@ function App() {
   useEffect(() => {
     if (!sidebarOpen) return;
     const poll = setInterval(() => {
-      invoke<unknown[]>("get_security_log").then((log) => {
-        setSecurityLog(log as SecurityEvent[]);
+      commands.getSecurityLog().then((log) => {
+        setSecurityLog(log);
       }).catch(() => { });
-      invoke<SentinelReport | null>("get_pending_report").then((report) => {
+      commands.getPendingReport().then((report) => {
         setPendingReport(report);
       }).catch(() => { });
     }, 2000);
@@ -265,11 +228,9 @@ function App() {
     try {
       if (mode === "smart") {
         // Phase 7: Two-Track Orchestration Loop
-        const result = await invoke<string>("execute_orchestration_loop", {
-          intent,
-          workspaceRoot: "/tmp/sion-workspace",
-        });
-        const parsed: OrchestrationResult = JSON.parse(result);
+        const orch = await commands.executeOrchestrationLoop(intent, "/tmp/sion-workspace");
+        if (orch.status === "error") throw new Error(orch.error);
+        const parsed: OrchestrationResult = JSON.parse(orch.data);
         setOrchResult(parsed);
 
         if (parsed.track === "knowledge") {
@@ -303,27 +264,22 @@ function App() {
         }
       } else {
         // Expert Mode: use pinned model (unchanged)
-        const result = await invoke<string>("dispatch_expert", {
-          intent,
-          taskCategory: selectedCategory,
-        });
-        const parsed: DispatchResult = JSON.parse(result);
+        const expert = await commands.dispatchExpert(intent, selectedCategory);
+        if (expert.status === "error") throw new Error(expert.error);
+        const parsed: DispatchResult = JSON.parse(expert.data);
         setSmartResult(parsed);
       }
     } catch (err) {
       console.error("Dispatch error:", err);
-      try {
-        const result = await invoke<string>("route_intent", { intent });
-        setSmartResult({
-          mode: "fallback",
-          triage: null,
-          routed_to: "heuristic",
-          model_name: "Heuristic",
-          designation: "Keyword Match",
-          response: result,
-          error: null,
-        });
-      } catch { }
+      setSmartResult({
+        mode: "fallback",
+        triage: null,
+        routed_to: "error",
+        model_name: "Error",
+        designation: "Failed",
+        response: null,
+        error: err instanceof Error ? err.message : String(err),
+      });
     } finally {
       setLoading(false);
     }
@@ -345,7 +301,7 @@ function App() {
     const newMode = mode === "smart" ? "expert" : "smart";
     setMode(newMode);
     setSidebarOpen(newMode === "expert");
-    await invoke("set_mode", { modeStr: newMode });
+    await commands.setMode(newMode);
   };
 
   const toggleTheme = () => {
@@ -354,7 +310,7 @@ function App() {
 
   const handlePinChange = async (category: string, agentKey: string) => {
     setPins((prev) => ({ ...prev, [category]: agentKey }));
-    await invoke("set_model_pin", { category, agentKey });
+    await commands.setModelPin(category, agentKey);
   };
 
   // Active agents for status bar
@@ -623,12 +579,12 @@ function App() {
                   {actionCardExpanded && Object.entries(actionCard.file_changes).map(([file, change]) => (
                     <div key={file} className="diff-file">
                       <div className="diff-file-header">
-                        <span className={`diff-status diff-${change.status}`}>
-                          {change.status === "added" ? "+Added" : change.status === "modified" ? "~Modified" : "-Deleted"}
+                        <span className={`diff-status diff-${change?.status ?? 'unknown'}`}>
+                          {change?.status === "added" ? "+Added" : change?.status === "modified" ? "~Modified" : "-Deleted"}
                         </span>
                         <span className="diff-filename">{file}</span>
                       </div>
-                      {change.after && (
+                      {change?.after && (
                         <pre className="diff-content">
                           <code>{change.after}</code>
                         </pre>
@@ -651,11 +607,9 @@ function App() {
                   onClick={async () => {
                     setApplyingChanges(true);
                     try {
-                      const res = await invoke<string>("sync_to_host", {
-                        executionId: actionCard.execution_id,
-                        workspaceRoot: "/tmp/sion-workspace",
-                      });
-                      const parsed = JSON.parse(res);
+                      const res = await commands.syncToHost(actionCard.execution_id, "/tmp/sion-workspace");
+                      if (res.status === "error") throw new Error(res.error);
+                      const parsed = JSON.parse(res.data);
                       alert(`✅ Applied ${parsed.applied} file(s) to workspace`);
                     } catch (e) {
                       alert(`❌ Sync failed: ${e}`);
@@ -670,9 +624,8 @@ function App() {
                   className="action-btn-snapback"
                   onClick={async () => {
                     try {
-                      await invoke<string>("sandbox_snapback", {
-                        snapshotId: actionCard.snapshot_id,
-                      });
+                      const res = await commands.sandboxSnapback(actionCard.snapshot_id);
+                      if (res.status === "error") throw new Error(res.error);
                       setActionCard(null);
                     } catch (e) {
                       alert(`Snap-Back failed: ${e}`);
@@ -858,7 +811,7 @@ function App() {
                     onChange={(e) => setEgressDomain(e.target.value)}
                     onKeyDown={async (e) => {
                       if (e.key === 'Enter' && egressDomain.trim()) {
-                        await invoke('add_egress_domain', { domain: egressDomain.trim() });
+                        await commands.addEgressDomain(egressDomain.trim());
                         setEgressDomain('');
                       }
                     }}
@@ -867,7 +820,7 @@ function App() {
                   <button
                     onClick={async () => {
                       if (egressDomain.trim()) {
-                        await invoke('add_egress_domain', { domain: egressDomain.trim() });
+                        await commands.addEgressDomain(egressDomain.trim());
                         setEgressDomain('');
                       }
                     }}
@@ -883,7 +836,7 @@ function App() {
                     <h3 style={{ margin: 0, fontSize: '13px', color: 'var(--sion-text-primary)' }}>📦 Sandbox History</h3>
                     <button
                       onClick={async () => {
-                        const history = await invoke<SandboxResult[]>('sandbox_history');
+                        const history = await commands.sandboxHistory();
                         setSandboxHistory(history);
                       }}
                       style={{ padding: '2px 8px', background: 'var(--sion-surface)', color: 'var(--sion-text-secondary)', border: '1px solid var(--sion-border)', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
@@ -943,7 +896,7 @@ function App() {
               <button
                 className="consent-send"
                 onClick={async () => {
-                  await invoke("approve_report");
+                  await commands.approveReport();
                   setPendingReport(null);
                   setShowReportJson(false);
                 }}
@@ -953,7 +906,7 @@ function App() {
               <button
                 className="consent-dismiss"
                 onClick={async () => {
-                  await invoke("dismiss_report");
+                  await commands.dismissReport();
                   setPendingReport(null);
                   setShowReportJson(false);
                 }}
@@ -1024,18 +977,18 @@ function App() {
                   <div className="action-card-diffs">
                     <label>File Changes ({Object.keys(actionCard.file_changes).length}):</label>
                     {Object.entries(actionCard.file_changes).map(([name, change]) => (
-                      <div key={name} className={`action-diff ${change.status}`}>
+                      <div key={name} className={`action-diff ${change?.status ?? 'unknown'}`}>
                         <div className="action-diff-header">
                           <span className="action-diff-status">
-                            {change.status === "added" ? "+" : change.status === "deleted" ? "-" : "~"}
+                            {change?.status === "added" ? "+" : change?.status === "deleted" ? "-" : "~"}
                           </span>
                           <span className="action-diff-name">{name}</span>
-                          <span className="action-diff-label">{change.status}</span>
+                          <span className="action-diff-label">{change?.status ?? 'unknown'}</span>
                         </div>
-                        {change.before && (
+                        {change?.before && (
                           <pre className="action-diff-before">- {change.before.slice(0, 500)}</pre>
                         )}
-                        {change.after && (
+                        {change?.after && (
                           <pre className="action-diff-after">+ {change.after.slice(0, 500)}</pre>
                         )}
                       </div>
@@ -1061,7 +1014,8 @@ function App() {
                 className="action-apply"
                 onClick={async () => {
                   try {
-                    await invoke("sandbox_apply", { executionId: actionCard.execution_id, targetDir: "." });
+                    const res = await commands.sandboxApply(actionCard.execution_id, ".");
+                    if (res.status === "error") throw new Error(res.error);
                     setActionCard(null);
                     setActionCardExpanded(false);
                   } catch (err) {
@@ -1075,7 +1029,8 @@ function App() {
                 className="action-snapback"
                 onClick={async () => {
                   try {
-                    await invoke("sandbox_snapback", { snapshotId: actionCard.snapshot_id });
+                    const res = await commands.sandboxSnapback(actionCard.snapshot_id);
+                    if (res.status === "error") throw new Error(res.error);
                     setActionCard(null);
                     setActionCardExpanded(false);
                   } catch (err) {

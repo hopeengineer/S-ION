@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { commands } from "./bindings";
 import "./SidecarMonitor.css";
 
 // ── Types ──
@@ -45,7 +45,7 @@ export default function SidecarMonitor() {
   // Poll sidecar status every 2 seconds
   const pollStatus = useCallback(async () => {
     try {
-      const raw = await invoke<string>("sidecar_status");
+      const raw = await commands.sidecarStatus();
       const parsed: SidecarStatus = JSON.parse(raw);
       setStatus(parsed);
     } catch {
@@ -56,7 +56,7 @@ export default function SidecarMonitor() {
   // Poll health every 3 seconds (only when running)
   const pollHealth = useCallback(async () => {
     try {
-      const raw = await invoke<string>("sidecar_health");
+      const raw = await commands.sidecarHealth();
       if (raw && raw !== "null") {
         const parsed: SidecarHealth = JSON.parse(raw);
         setHealth(parsed);
@@ -79,8 +79,9 @@ export default function SidecarMonitor() {
   // Actions
   const handleProvision = async () => {
     try {
-      const result = await invoke<string>("sidecar_provision");
-      setProvisioningMsg(result);
+      const res = await commands.sidecarProvision();
+      if (res.status === "error") throw new Error(res.error);
+      setProvisioningMsg(res.data);
       pollStatus();
     } catch (e) {
       setProvisioningMsg(`Error: ${e}`);
@@ -89,7 +90,8 @@ export default function SidecarMonitor() {
 
   const handleBoot = async () => {
     try {
-      await invoke<string>("sidecar_boot");
+      const res = await commands.sidecarBoot();
+      if (res.status === "error") throw new Error(res.error);
       pollStatus();
     } catch {
       // Handle error
@@ -98,7 +100,8 @@ export default function SidecarMonitor() {
 
   const handleShutdown = async () => {
     try {
-      await invoke<string>("sidecar_shutdown");
+      const res = await commands.sidecarShutdown();
+      if (res.status === "error") throw new Error(res.error);
       setHealth(null);
       pollStatus();
     } catch {
