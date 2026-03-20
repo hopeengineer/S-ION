@@ -36,7 +36,7 @@ User Intent → Gemini Flash Triage
 | Fast Designer | Rapid UI prototyping | GPT-4o-mini |
 | Pro Designer | Polished design | GPT-4o |
 
-## IPC Architecture (37 Commands)
+## IPC Architecture (41 Commands)
 
 All frontend↔backend communication uses **Tauri IPC commands**. Every command is:
 - Annotated with `#[specta::specta]` for type-safe TypeScript bindings
@@ -54,6 +54,7 @@ All frontend↔backend communication uses **Tauri IPC commands**. Every command 
 - **Bridge** (4): `bridge_handshake`, `bridge_pulse`, `bridge_pending`, `bridge_local_missions`, `bridge_execute_mission`
 - **Sidecar** (6): `sidecar_status`, `sidecar_provision`, `sidecar_boot`, `sidecar_shutdown`, `sidecar_health`, `sidecar_health_check`
 - **VSOck** (2): `vsock_ping`, `vsock_send_mission`
+- **Shadow** (4): `shadow_scan_workspace`, `shadow_get_hotspots`, `shadow_status`, `shadow_generate`
 
 ## Tech Stack
 
@@ -66,12 +67,15 @@ All frontend↔backend communication uses **Tauri IPC commands**. Every command 
 
 | File | Purpose |
 |------|---------|
-| `src-tauri/src/lib.rs` | All 37 IPC commands + app state |
+| `src-tauri/src/lib.rs` | All 41 IPC commands + app state |
 | `src-tauri/src/orchestrator/mod.rs` | Core types (SamLogic, PipelineResult, etc.) |
 | `src-tauri/src/orchestrator/router.rs` | Triage, dispatch, orchestration loop |
 | `src-tauri/src/orchestrator/sandbox.rs` | Process isolation + sandboxed execution |
 | `src-tauri/src/orchestrator/sentinel.rs` | PII-scrubbed crash reporting |
 | `src-tauri/src/orchestrator/egress.rs` | Network allowlist filter |
+| `src-tauri/src/orchestrator/shadow_scanner.rs` | Workspace file tree + tech stack detection |
+| `src-tauri/src/orchestrator/shadow_temporal.rs` | Git 30-day churn → hot spots |
+| `src-tauri/src/orchestrator/shadow_gen.rs` | LLM-powered shadow doc generation |
 | `src-tauri/SAM_LOGIC.yaml` | Intelligence manifest |
 | `src/App.tsx` | Main React component |
 | `src/SidecarMonitor.tsx` | VM sidecar telemetry panel |

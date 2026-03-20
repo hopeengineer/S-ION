@@ -12,7 +12,7 @@
 
 ## IPC Contract Rules
 
-- All 37 IPC commands in `src-tauri/src/lib.rs` are annotated with `#[specta::specta]`
+- All 41 IPC commands in `src-tauri/src/lib.rs` are annotated with `#[specta::specta]`
 - `src/bindings.ts` is **auto-generated** by `tauri-specta` on every debug build — **DO NOT manually edit it**
 - When adding a new command: annotate with both `#[tauri::command]` and `#[specta::specta]`, add to the `collect_commands!` list in `run()`
 - All custom types must derive `specta::Type` alongside `Serialize`/`Deserialize`
