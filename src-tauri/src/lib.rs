@@ -2,7 +2,7 @@ mod orchestrator;
 
 use orchestrator::egress::EgressFilter;
 use orchestrator::heartbeat::BridgeHeartbeat;
-use orchestrator::router::{self, DispatchResult, ExpertPins, RuntimeMode};
+use orchestrator::router::{self, DispatchResult, ExpertPins, OrchestrationResult, RuntimeMode};
 use orchestrator::sandbox::{Sandbox, SandboxConfig};
 use orchestrator::sentinel::Sentinel;
 use orchestrator::sidecar_manager::SidecarManager;
@@ -252,6 +252,151 @@ fn sandbox_snapback(snapshot_id: String, state: State<AppState>) -> Result<Strin
 fn sandbox_history(state: State<AppState>) -> String {
     let sandbox = state.sandbox.lock().unwrap();
     serde_json::to_string(&sandbox.get_history()).unwrap_or_default()
+}
+
+// ──────────────────────────────────────────────────
+// Phase 7: Orchestration Loop IPC Commands
+// ──────────────────────────────────────────────────
+
+/// The full orchestration loop: prompt → triage → Knowledge text OR Action sandbox.
+/// This is the single entry point that replaces dispatch_smart for the connected pipeline.
+#[tauri::command]
+async fn execute_orchestration_loop(
+    intent: String,
+    _workspace_root: String,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let sam_logic = state.sam_logic.clone();
+
+    // Step 1: Triage with Gemini Flash
+    let triage = match router::call_gemini_flash_triage(&intent, &sam_logic).await {
+        Ok(t) => t,
+        Err(e) => {
+            println!("⚠️  Triage failed, defaulting to knowledge track: {}", e);
+            router::TriageResult {
+                category: "simple_qa".into(),
+                route_to: "analyst".into(),
+                reasoning: format!("Triage fallback: {}", e),
+                confidence: 0.0,
+            }
+        }
+    };
+
+    // Step 2: Decide track based on triage category
+    let is_action_track = matches!(
+        triage.category.as_str(),
+        "deep_code" | "parallel_ui" | "code_generation" | "refactor"
+    );
+
+    let (_, model_name, _) = router::resolve_agent_public(&triage.route_to, &sam_logic);
+
+    if is_action_track {
+        // ── ACTION TRACK ──
+        println!("🎯 Action Track: {} → sandbox execution", triage.category);
+
+        // Step 3: Get ActionEnvelope from LLM (JSON mode)
+        let envelope = match router::dispatch_action(&intent, &triage.route_to, &sam_logic).await {
+            Ok(env) => env,
+            Err(e) => {
+                let result = OrchestrationResult {
+                    track: "action".into(),
+                    triage: Some(triage),
+                    model_name,
+                    response: None,
+                    envelope: None,
+                    sandbox_result: None,
+                    error: Some(format!("ActionEnvelope generation failed: {}", e)),
+                };
+                return serde_json::to_string(&result)
+                    .map_err(|e| format!("Serialization error: {}", e));
+            }
+        };
+
+        // Step 4: Deterministic audit
+        if let Err(blocked_reason) = router::audit_envelope(&envelope) {
+            let result = OrchestrationResult {
+                track: "action".into(),
+                triage: Some(triage),
+                model_name,
+                response: None,
+                envelope: Some(envelope),
+                sandbox_result: None,
+                error: Some(blocked_reason),
+            };
+            return serde_json::to_string(&result)
+                .map_err(|e| format!("Serialization error: {}", e));
+        }
+
+        // Step 5: Execute in sandbox
+        let script = envelope.bash_commands.join(" && ");
+        let sandbox_result = {
+            let mut sandbox = state.sandbox.lock().unwrap();
+            sandbox.execute(&script, &triage.route_to)
+        };
+
+        match sandbox_result {
+            Ok(sr) => {
+                let sr_json = serde_json::to_value(&sr).unwrap_or_default();
+                let result = OrchestrationResult {
+                    track: "action".into(),
+                    triage: Some(triage),
+                    model_name,
+                    response: Some(envelope.explanation.clone()),
+                    envelope: Some(envelope),
+                    sandbox_result: Some(sr_json),
+                    error: None,
+                };
+                serde_json::to_string(&result)
+                    .map_err(|e| format!("Serialization error: {}", e))
+            }
+            Err(e) => {
+                let result = OrchestrationResult {
+                    track: "action".into(),
+                    triage: Some(triage),
+                    model_name,
+                    response: None,
+                    envelope: Some(envelope),
+                    sandbox_result: None,
+                    error: Some(format!("Sandbox execution failed: {}", e)),
+                };
+                serde_json::to_string(&result)
+                    .map_err(|e| format!("Serialization error: {}", e))
+            }
+        }
+    } else {
+        // ── KNOWLEDGE TRACK ──
+        println!("📚 Knowledge Track: {} → text response", triage.category);
+
+        let dispatch = router::dispatch_smart(&intent, &sam_logic).await;
+        let result = OrchestrationResult {
+            track: "knowledge".into(),
+            triage: Some(triage),
+            model_name: dispatch.model_name,
+            response: dispatch.response,
+            envelope: None,
+            sandbox_result: None,
+            error: dispatch.error,
+        };
+        serde_json::to_string(&result)
+            .map_err(|e| format!("Serialization error: {}", e))
+    }
+}
+
+/// Safely copy sandbox execution results to the user's actual project directory.
+/// Path-confined: validates target is within home dir, blocks traversal.
+#[tauri::command]
+fn sync_to_host(
+    execution_id: String,
+    workspace_root: String,
+    state: State<AppState>,
+) -> Result<String, String> {
+    let sandbox = state.sandbox.lock().unwrap();
+    let target = std::path::Path::new(&workspace_root);
+    let applied = sandbox.apply(&execution_id, target)?;
+    Ok(serde_json::json!({
+        "applied": applied,
+        "workspace": workspace_root
+    }).to_string())
 }
 
 // ──────────────────────────────────────────────────
@@ -555,6 +700,8 @@ pub fn run() {
             bridge_execute_mission,
             vsock_ping,
             vsock_send_mission,
+            execute_orchestration_loop,
+            sync_to_host,
         ])
         .run(tauri::generate_context!())
         .expect("error while running S-ION");

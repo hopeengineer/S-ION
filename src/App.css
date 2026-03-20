@@ -424,6 +424,179 @@ body {
   background: var(--sion-accent);
 }
 
+/* ── Phase 7: Action Card ── */
+.action-card {
+  margin: 16px 0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  background: var(--sion-bg-secondary, #fafafa);
+  overflow: hidden;
+}
+
+.action-card-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.action-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.action-card-badge {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.action-card-meta {
+  font-size: 11px;
+  color: #868e96;
+  font-variant-numeric: tabular-nums;
+}
+
+.action-card-explanation {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #495057;
+  line-height: 1.5;
+}
+
+.action-card-diffs {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.action-card-toggle {
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #495057;
+  cursor: pointer;
+}
+
+.action-card-toggle:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.diff-file {
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.diff-file-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.diff-status {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.diff-added {
+  color: #2b8a3e;
+  background: rgba(43, 138, 62, 0.1);
+}
+
+.diff-modified {
+  color: #e67700;
+  background: rgba(230, 119, 0, 0.1);
+}
+
+.diff-deleted {
+  color: #c92a2a;
+  background: rgba(201, 42, 42, 0.1);
+}
+
+.diff-filename {
+  font-size: 12px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #495057;
+}
+
+.diff-content {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 11px;
+  line-height: 1.6;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  background: rgba(0, 0, 0, 0.02);
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.action-card-stdout {
+  margin: 0;
+  padding: 10px 16px;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  background: rgba(0, 0, 0, 0.03);
+  color: #868e96;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.action-card-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.action-btn-apply {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #ff4500;
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn-apply:hover:not(:disabled) {
+  background: #e63e00;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 69, 0, 0.3);
+}
+
+.action-btn-apply:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn-snapback {
+  padding: 10px 16px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  background: transparent;
+  color: #495057;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn-snapback:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
 /* ── Swarm Status Footer ── */
 .swarm-status {
   position: absolute;

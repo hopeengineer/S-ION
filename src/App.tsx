@@ -72,12 +72,6 @@ interface SentinelReport {
   timestamp: string;
 }
 
-interface FileChange {
-  status: string;
-  before: string | null;
-  after: string | null;
-}
-
 interface SandboxResult {
   execution_id: string;
   agent_key: string;
@@ -89,6 +83,30 @@ interface SandboxResult {
   timed_out: boolean;
   file_changes: Record<string, FileChange>;
   snapshot_id: string;
+}
+
+interface FileChange {
+  status: string;
+  before: string | null;
+  after: string | null;
+}
+
+// Phase 7: Orchestration Loop
+interface ActionEnvelope {
+  mission_id: string;
+  explanation: string;
+  bash_commands: string[];
+  target_files: string[];
+}
+
+interface OrchestrationResult {
+  track: "knowledge" | "action";
+  triage: TriageResult | null;
+  model_name: string;
+  response: string | null;
+  envelope: ActionEnvelope | null;
+  sandbox_result: SandboxResult | null;
+  error: string | null;
 }
 
 // ── Model Registry (for Expert Mode UI) ──
@@ -171,6 +189,10 @@ function App() {
   const [actionCard, setActionCard] = useState<SandboxResult | null>(null);
   const [actionCardExpanded, setActionCardExpanded] = useState(false);
 
+  // Phase 7: Orchestration result
+  const [orchResult, setOrchResult] = useState<OrchestrationResult | null>(null);
+  const [applyingChanges, setApplyingChanges] = useState(false);
+
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -222,21 +244,50 @@ function App() {
     setLoading(true);
     setSmartResult(null);
     setPipeline(null);
+    setOrchResult(null);
+    setActionCard(null);
 
     try {
       if (mode === "smart") {
-        // Smart Mode: Gemini Flash triage → model dispatch
-        const result = await invoke<string>("dispatch_smart", { intent });
-        const parsed: DispatchResult = JSON.parse(result);
-        setSmartResult(parsed);
+        // Phase 7: Two-Track Orchestration Loop
+        const result = await invoke<string>("execute_orchestration_loop", {
+          intent,
+          workspaceRoot: "/tmp/sion-workspace",
+        });
+        const parsed: OrchestrationResult = JSON.parse(result);
+        setOrchResult(parsed);
 
-        // If triage routes to commander, also run the full pipeline
-        if (parsed.routed_to === "commander") {
-          const pipeResult = await invoke<string>("route_intent_live", { intent });
-          setPipeline(JSON.parse(pipeResult));
+        if (parsed.track === "knowledge") {
+          // Knowledge track: display as text response
+          setSmartResult({
+            mode: "smart",
+            triage: parsed.triage,
+            routed_to: parsed.triage?.route_to || "analyst",
+            model_name: parsed.model_name,
+            designation: parsed.model_name,
+            response: parsed.response,
+            error: parsed.error,
+          });
+        } else {
+          // Action track: show Action Card
+          if (parsed.sandbox_result) {
+            setActionCard(parsed.sandbox_result);
+          }
+          // Also display triage info
+          if (parsed.triage) {
+            setSmartResult({
+              mode: "smart",
+              triage: parsed.triage,
+              routed_to: parsed.triage.route_to,
+              model_name: parsed.model_name,
+              designation: parsed.model_name,
+              response: parsed.response || parsed.envelope?.explanation || null,
+              error: parsed.error,
+            });
+          }
         }
       } else {
-        // Expert Mode: use pinned model
+        // Expert Mode: use pinned model (unchanged)
         const result = await invoke<string>("dispatch_expert", {
           intent,
           taskCategory: selectedCategory,
@@ -246,7 +297,6 @@ function App() {
       }
     } catch (err) {
       console.error("Dispatch error:", err);
-      // Fallback to heuristic
       try {
         const result = await invoke<string>("route_intent", { intent });
         setSmartResult({
@@ -476,6 +526,103 @@ function App() {
               <span className="pulse">{mode === "smart" ? "⚡" : "📌"}</span>
               {mode === "smart" ? "Triage routing..." : "Expert dispatching..."}
             </output>
+          )}
+
+          {/* ── Phase 7: Action Card (Sandbox Result) ── */}
+          {actionCard && (
+            <section className="action-card">
+              <header className="action-card-header">
+                <div className="action-card-title">
+                  <span className="action-card-badge">
+                    {actionCard.exit_code === 0 ? "✅" : "❌"} SANDBOX
+                  </span>
+                  <span className="action-card-meta">
+                    {actionCard.duration_ms}ms · exit {actionCard.exit_code}
+                  </span>
+                </div>
+                {orchResult?.envelope && (
+                  <p className="action-card-explanation">
+                    {orchResult.envelope.explanation}
+                  </p>
+                )}
+              </header>
+
+              {/* Diff Viewer */}
+              {Object.keys(actionCard.file_changes).length > 0 && (
+                <div className="action-card-diffs">
+                  <button
+                    className="action-card-toggle"
+                    onClick={() => setActionCardExpanded(!actionCardExpanded)}
+                  >
+                    {actionCardExpanded ? "▼" : "▶"} {Object.keys(actionCard.file_changes).length} file(s) changed
+                  </button>
+                  {actionCardExpanded && Object.entries(actionCard.file_changes).map(([file, change]) => (
+                    <div key={file} className="diff-file">
+                      <div className="diff-file-header">
+                        <span className={`diff-status diff-${change.status}`}>
+                          {change.status === "added" ? "+Added" : change.status === "modified" ? "~Modified" : "-Deleted"}
+                        </span>
+                        <span className="diff-filename">{file}</span>
+                      </div>
+                      {change.after && (
+                        <pre className="diff-content">
+                          <code>{change.after}</code>
+                        </pre>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* stdout/stderr */}
+              {actionCard.stdout && (
+                <pre className="action-card-stdout">{actionCard.stdout}</pre>
+              )}
+
+              {/* Action Buttons */}
+              <div className="action-card-actions">
+                <button
+                  className="action-btn-apply"
+                  disabled={applyingChanges || Object.keys(actionCard.file_changes).length === 0}
+                  onClick={async () => {
+                    setApplyingChanges(true);
+                    try {
+                      const res = await invoke<string>("sync_to_host", {
+                        executionId: actionCard.execution_id,
+                        workspaceRoot: "/tmp/sion-workspace",
+                      });
+                      const parsed = JSON.parse(res);
+                      alert(`✅ Applied ${parsed.applied} file(s) to workspace`);
+                    } catch (e) {
+                      alert(`❌ Sync failed: ${e}`);
+                    } finally {
+                      setApplyingChanges(false);
+                    }
+                  }}
+                >
+                  {applyingChanges ? "Applying..." : "Apply Changes"}
+                </button>
+                <button
+                  className="action-btn-snapback"
+                  onClick={async () => {
+                    try {
+                      await invoke<string>("sandbox_snapback", {
+                        snapshotId: actionCard.snapshot_id,
+                      });
+                      setActionCard(null);
+                    } catch (e) {
+                      alert(`Snap-Back failed: ${e}`);
+                    }
+                  }}
+                >
+                  ⏪ Snap-Back
+                </button>
+              </div>
+            </section>
+          )}
+
+          {orchResult?.error && !smartResult?.error && (
+            <GrandmaError error={orchResult.error} />
           )}
 
           {/* ── Swarm Status Bar ── */}
