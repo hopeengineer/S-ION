@@ -16,12 +16,20 @@ Frontend: commands.executeOrchestrationLoop(intent, workspaceRoot)
     │   ⚠️  RECOVERY: If JSON is truncated, extract_field() recovers category+route_to
     │      from partial JSON. Recovered results get confidence=0.7.
     │
+    ▼  (1b) Memory Recall ───────────────────────────
+    │   embed(intent) via CoreML ONNX → search LanceDB top 3 → append as [Memory Recall]
+    │   Graceful: if no memories or embedder not ready, proceeds without recall
+    │
     ├── Knowledge Track (simple_qa, long_context, image_gen)
     │   │
     │   ▼  (2) Call routed agent ──────────────────────────
     │   │   analyst → POST https://api.deepseek.com/v1/chat/completions (DeepSeek)
     │   │   visionary → POST https://generativelanguage.googleapis.com/v1beta (Gemini Pro)
     │   │   fast_designer → POST https://generativelanguage.googleapis.com/v1beta (NanoBanana)
+    │   │
+    │   ▼  (2b) Reflective Hook ──────────────────────────
+    │   │   POST to Gemini Flash: extract memories from response
+    │   │   Stores to LanceDB via embed() + MemoryManager.store()
     │   │
     │   └── Result: OrchestrationResult { track: "knowledge", response: "...", ... }
     │
@@ -47,6 +55,21 @@ Frontend: commands.executeOrchestrationLoop(intent, workspaceRoot)
         │   Returns: SandboxResult { stdout, stderr, exit_code, file_changes, duration_ms }
         │
         └── Result: OrchestrationResult { track: "action", sandbox_result: ..., ... }
+```
+
+### Startup Auto-Provision Flow
+```
+App starts → setup hook → tokio::spawn
+  ├── Model already downloaded? → init_local() + MemoryManager::init()
+  └── First launch? → hippocampus_provision():
+      1. provisioner.provision() — downloads BGE-M3 INT8 from gpahal/bge-m3-onnx-int8
+      2. embedder.init_local() — loads ONNX via CoreML/DirectML/CUDA/CPU
+      3. MemoryManager::init() — opens LanceDB at ~/Library/Application Support/com.s-ion.dev/
+
+Dreaming Loop (every 5 min):
+  1. Flush unpromoted DreamBuffer entries → embed + store in LanceDB
+  2. prune_expired() — remove observations > 30 days
+  3. cleanup_promoted() — delete buffer entries > 7 days
 ```
 
 ### Expert Mode: `dispatch_expert`

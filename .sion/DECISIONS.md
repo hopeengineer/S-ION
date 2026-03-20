@@ -69,3 +69,28 @@ TypeScript's `number` type uses IEEE 754 doubles (max safe integer: 2^53). `spec
 - **Compile-time baking**: The manifest is embedded in the binary — no file system dependency
 - **Immutability**: Changes require a rebuild — prevents runtime tampering
 - **Single source of truth**: One YAML file defines all agent configs, security rules, and audit patterns
+
+## Why CoreML-First for Embeddings (Not Cloud-Only)?
+
+- **Privacy**: Embedding vectors never leave the machine — zero cloud sync for memory content
+- **Speed**: CoreML on Apple Neural Engine is ~10x faster than a round-trip to Gemini
+- **Offline**: Works without internet after initial model download
+- **Fallback**: Cloud Gemini embedding is the graceful fallback if ONNX fails or model isn't downloaded yet
+
+## Why Auto-Provision on First Launch?
+
+- **Zero friction**: Users shouldn't have to manually download models — that's a developer experience, not a user experience
+- **Background**: Downloads happen in a spawned async task — the app is usable immediately via Gemini cloud fallback
+- **Idempotent**: If files already exist, startup just initializes without re-downloading
+
+## Why DreamBuffer (SQLite) Between ONNX and LanceDB?
+
+- **Race condition**: Memory extraction can happen before the ONNX model finishes downloading
+- **No data loss**: SQLite captures everything immediately, promoted to LanceDB when the model is ready
+- **Transactional**: Each entry is marked `promoted=1` only AFTER the LanceDB write succeeds
+
+## Why Reflective Hook (Not Explicit Memory Commands)?
+
+- **Invisible**: Users don't have to manually "save" information — S-ION extracts knowledge automatically
+- **Comprehensive**: The LLM identifies facts, preferences, and decisions — humans miss what they know
+- **Deduplicated**: MemoryManager checks for semantic similarity before storing — no duplicates

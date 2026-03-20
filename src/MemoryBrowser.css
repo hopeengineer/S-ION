@@ -1,0 +1,356 @@
+/* ──────────────────────────────────────────────────
+   Memory Browser — Phase 10 Sovereign Hippocampus
+   Uses S-ION Design System tokens from App.css
+   ────────────────────────────────────────────────── */
+
+.memory-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+/* ── Provisioning Banner ── */
+.memory-provision-banner {
+  margin: 8px 8px 4px;
+  padding: 12px;
+  border-radius: var(--sion-radius-md, 10px);
+  background: linear-gradient(135deg, rgba(255, 69, 0, 0.06), rgba(139, 92, 246, 0.06));
+  border: 1px solid rgba(255, 69, 0, 0.15);
+  animation: fadeInUp 0.3s ease both;
+}
+
+.provision-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.provision-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.provision-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.provision-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sion-text-primary);
+}
+
+.provision-subtitle {
+  font-size: 10px;
+  color: var(--sion-text-secondary);
+}
+
+.provision-progress-track {
+  height: 4px;
+  background: var(--sion-bg-tertiary, rgba(0, 0, 0, 0.06));
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.provision-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--sion-accent, #FF4500), #8B5CF6);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.provision-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.provision-btn-download {
+  padding: 5px 12px;
+  background: var(--sion-accent, #FF4500);
+  color: #fff;
+  border: none;
+  border-radius: var(--sion-radius-sm, 6px);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.provision-btn-download:hover {
+  background: var(--sion-accent-hover, #E63E00);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 69, 0, 0.3);
+}
+
+.provision-skip {
+  font-size: 10px;
+  color: var(--sion-text-tertiary);
+}
+
+/* ── Search + Controls ── */
+.memory-controls {
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.memory-search-row {
+  display: flex;
+  gap: 4px;
+}
+
+.memory-search {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--sion-bg-tertiary, #F5F5F5);
+  color: var(--sion-text-primary);
+  border: 1px solid var(--sion-border, #E8E8E8);
+  border-radius: var(--sion-radius-sm, 6px);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.memory-search:focus {
+  border-color: var(--sion-accent, #FF4500);
+  box-shadow: 0 0 0 2px rgba(255, 69, 0, 0.08);
+}
+
+.memory-search::placeholder {
+  color: var(--sion-text-tertiary);
+}
+
+.memory-search-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sion-bg-tertiary, #F5F5F5);
+  border: 1px solid var(--sion-border, #E8E8E8);
+  border-radius: var(--sion-radius-sm, 6px);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+
+.memory-search-btn:hover {
+  background: var(--sion-accent-light, rgba(255, 69, 0, 0.08));
+  border-color: var(--sion-accent, #FF4500);
+}
+
+/* ── Tier Filters ── */
+.memory-filters {
+  display: flex;
+  gap: 4px;
+}
+
+.memory-filter {
+  flex: 1;
+  padding: 4px 8px;
+  background: var(--sion-bg-tertiary, #F5F5F5);
+  border: 1px solid var(--sion-border, #E8E8E8);
+  border-radius: var(--sion-radius-sm, 6px);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--sion-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.memory-filter:hover {
+  background: var(--sion-accent-light, rgba(255, 69, 0, 0.08));
+  color: var(--sion-accent, #FF4500);
+}
+
+.memory-filter.active {
+  background: var(--sion-accent, #FF4500);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* ── Count ── */
+.memory-count {
+  padding: 0 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--sion-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.memory-count-loading {
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+/* ── Memory List ── */
+.memory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 8px 12px;
+}
+
+/* ── Empty State ── */
+.memory-empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--sion-text-tertiary);
+}
+
+.memory-empty-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+  opacity: 0.5;
+}
+
+.memory-empty p {
+  margin: 2px 0;
+  font-size: 12px;
+}
+
+.memory-empty-hint {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* ── Memory Card ── */
+.memory-card {
+  border: 1px solid var(--sion-border, #E8E8E8);
+  border-radius: var(--sion-radius-sm, 6px);
+  background: var(--sion-bg, #fff);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.memory-card:hover {
+  border-color: var(--sion-border-hover, #D0D0D0);
+  box-shadow: var(--sion-shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.04));
+}
+
+.memory-card.expanded {
+  border-color: var(--sion-accent, #FF4500);
+  box-shadow: 0 0 0 1px rgba(255, 69, 0, 0.1);
+}
+
+.memory-card-header {
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.memory-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.memory-category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: var(--sion-radius-full, 9999px);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.memory-tier-badge {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.memory-card-preview {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--sion-text-primary);
+  margin: 0;
+  word-break: break-word;
+}
+
+.memory-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.memory-time {
+  font-size: 10px;
+  color: var(--sion-text-tertiary);
+}
+
+.memory-score {
+  font-size: 10px;
+  color: var(--sion-accent, #FF4500);
+  font-weight: 600;
+}
+
+/* ── Card Actions (Expanded) ── */
+.memory-card-actions {
+  display: flex;
+  gap: 6px;
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--sion-border, #E8E8E8);
+  background: var(--sion-bg-secondary, #FAFAFA);
+}
+
+.memory-delete-btn,
+.memory-copy-btn {
+  flex: 1;
+  padding: 4px 8px;
+  border-radius: var(--sion-radius-sm, 6px);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--sion-border, #E8E8E8);
+  background: var(--sion-bg, #fff);
+  color: var(--sion-text-secondary);
+}
+
+.memory-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #EF4444;
+}
+
+.memory-copy-btn:hover {
+  background: var(--sion-accent-light, rgba(255, 69, 0, 0.08));
+  border-color: rgba(255, 69, 0, 0.3);
+  color: var(--sion-accent, #FF4500);
+}
+
+.memory-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

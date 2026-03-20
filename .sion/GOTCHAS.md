@@ -70,3 +70,19 @@ specta generates `HashMap<String, T>` as `Partial<{ [key in string]: T }>`, mean
 - Test that the app actually starts
 
 **Full verification**: `cargo check` → `cargo run` (wait for "📝 TypeScript bindings exported") → `tsc --noEmit`
+
+## 11. HuggingFace Official Repos ≠ Quantized Models
+
+**Problem**: `BAAI/bge-m3` (the official repo) does NOT contain an INT8 ONNX model. Requesting `model_int8.onnx` returns HTTP 404.
+
+**Fix**: Use community quantized repos like `gpahal/bge-m3-onnx-int8`. The file is named `model_quantized.onnx` (not `model_int8.onnx`).
+
+**Rule**: Always verify HuggingFace file existence before hardcoding download URLs. Check the repo's file list via `https://huggingface.co/api/models/{repo}`.
+
+## 12. tokio::sync::Mutex for Async State, std::sync::Mutex for Sync State
+
+**Problem**: `std::sync::MutexGuard` is `!Send`. If you hold it across an `.await` point inside a `tokio::spawn`, the compiler rejects it.
+
+**Rule**: Use `tokio::sync::Mutex` for state that needs `.await` inside the critical section (e.g., `provisioner`, `embedder`, `memory`). Use `std::sync::Mutex` for state that does synchronous-only access (e.g., `dream_buffer`, `sandbox`).
+
+**Why it's sneaky**: Both compile when used normally. The error only appears when you `Arc::clone()` + move into a `tokio::spawn`.

@@ -36,7 +36,7 @@ User Intent → Gemini Flash Triage
 | Fast Designer | Rapid UI prototyping | GPT-4o-mini |
 | Pro Designer | Polished design | GPT-4o |
 
-## IPC Architecture (41 Commands)
+## IPC Architecture (48 Commands)
 
 All frontend↔backend communication uses **Tauri IPC commands**. Every command is:
 - Annotated with `#[specta::specta]` for type-safe TypeScript bindings
@@ -54,7 +54,8 @@ All frontend↔backend communication uses **Tauri IPC commands**. Every command 
 - **Bridge** (4): `bridge_handshake`, `bridge_pulse`, `bridge_pending`, `bridge_local_missions`, `bridge_execute_mission`
 - **Sidecar** (6): `sidecar_status`, `sidecar_provision`, `sidecar_boot`, `sidecar_shutdown`, `sidecar_health`, `sidecar_health_check`
 - **VSOck** (2): `vsock_ping`, `vsock_send_mission`
-- **Shadow** (4): `shadow_scan_workspace`, `shadow_get_hotspots`, `shadow_status`, `shadow_generate`
+- **Shadow** (5): `shadow_scan_workspace`, `shadow_get_hotspots`, `shadow_get_atlas`, `shadow_status`, `shadow_generate`
+- **Memory** (6): `memory_store`, `memory_query`, `memory_list`, `memory_delete`, `memory_provision_status`, `memory_provision_start`
 
 ## Tech Stack
 
@@ -67,7 +68,7 @@ All frontend↔backend communication uses **Tauri IPC commands**. Every command 
 
 | File | Purpose |
 |------|---------|
-| `src-tauri/src/lib.rs` | All 41 IPC commands + app state |
+| `src-tauri/src/lib.rs` | All 48 IPC commands + app state |
 | `src-tauri/src/orchestrator/mod.rs` | Core types (SamLogic, PipelineResult, etc.) |
 | `src-tauri/src/orchestrator/router.rs` | Triage, dispatch, orchestration loop |
 | `src-tauri/src/orchestrator/sandbox.rs` | Process isolation + sandboxed execution |
@@ -79,4 +80,16 @@ All frontend↔backend communication uses **Tauri IPC commands**. Every command 
 | `src-tauri/SAM_LOGIC.yaml` | Intelligence manifest |
 | `src/App.tsx` | Main React component |
 | `src/SidecarMonitor.tsx` | VM sidecar telemetry panel |
+| `src/MemoryBrowser.tsx` | Memory Browser: search, filter, view/delete brain cells |
 | `src/bindings.ts` | **Auto-generated** typed IPC wrappers |
+
+## Memory Module (`src-tauri/src/memory/`)
+
+| File | Purpose |
+|------|---------|
+| `store.rs` | `MemoryManager` — dual-tier LanceDB (Global + Project), schema, dedup, TTL prune |
+| `embedder.rs` | `Embedder` — Hardware Handshake (CoreML/DirectML/CUDA→CPU) + ONNX + Gemini cloud fallback |
+| `provisioner.rs` | `ModelProvisioner` — BGE-M3 INT8 ONNX download from HuggingFace |
+| `buffer.rs` | `DreamBuffer` — SQLite buffer for memories captured while model downloads |
+| `router.rs` | Reflective Hook — auto-extracts memories from LLM responses via Gemini |
+| `mod.rs` | Module declaration |

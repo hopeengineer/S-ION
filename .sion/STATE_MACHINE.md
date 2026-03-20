@@ -11,7 +11,7 @@
 | `securityLog` | `SecurityEvent[]` | `get_security_log()` polled every 2s |
 | `pendingReport` | `SentinelReport \| null` | `get_pending_report()` polled every 2s |
 | `sandboxHistory` | `SandboxResult[]` | `sandbox_history()` on demand |
-| `sidebarTab` | `"cockpit" \| "security" \| "sentinel"` | Local state |
+| `sidebarTab` | `"cockpit" \| "security" \| "sentinel" \| "shadow" \| "memory"` | Local state |
 | `smartResult` | `DispatchResult \| null` | `dispatch_smart()` / `execute_orchestration_loop()` |
 | `orchResult` | `OrchestrationResult \| null` | `execute_orchestration_loop()` |
 | `actionCard` | `SandboxResult \| null` | From orchestration result |
@@ -30,6 +30,10 @@
 | `heartbeat` | `BridgeHeartbeat` | No (internal Mutex) | Railway bridge connection |
 | `sidecar` | `SidecarManager` | Yes | VM lifecycle |
 | `vsock` | `VsockChannel` | Yes | Guest Agent communication |
+| `memory` | `Option<MemoryManager>` | Yes (tokio) | LanceDB vector store |
+| `embedder` | `Embedder` | Yes (tokio) | ONNX/CoreML text embedder |
+| `provisioner` | `Option<ModelProvisioner>` | Yes (tokio) | BGE-M3 model download manager |
+| `dream_buffer` | `Option<DreamBuffer>` | Yes (std) | SQLite buffer for pre-model memories |
 
 ## Data Flow: Intent → Response
 
@@ -42,7 +46,8 @@ handleSubmit()
   │   invoke("execute_orchestration_loop")
   │       │
   │       ├── call_gemini_flash_triage()  ← validate_egress()
-  │       ├── Knowledge? → call_agent_for_response()
+  │       ├── Memory Recall: embed(intent) → LanceDB search top 3 → inject as context
+  │       ├── Knowledge? → call_agent_for_response() → Reflective Hook extracts memories
   │       └── Action?    → parse envelope → sandbox.execute()
   │                                             │
   │                          ┌──────────────────┘

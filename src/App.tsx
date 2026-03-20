@@ -7,6 +7,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import "./App.css";
 import SidecarMonitor from "./SidecarMonitor";
+import MemoryBrowser from "./MemoryBrowser";
 
 const appWindow = getCurrentWindow();
 
@@ -141,7 +142,7 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState("terminal_cli");
 
   // Sidebar tab state
-  const [sidebarTab, setSidebarTab] = useState<"cockpit" | "security" | "sentinel" | "shadow">("cockpit");
+  const [sidebarTab, setSidebarTab] = useState<"cockpit" | "security" | "sentinel" | "shadow" | "memory">("cockpit");
 
   // Security Dashboard state
   const [securityLog, setSecurityLog] = useState<SecurityEvent[]>([]);
@@ -728,6 +729,12 @@ function App() {
               >
                 🧠 Shadow
               </button>
+              <button
+                className={`sidebar-tab ${sidebarTab === "memory" ? "active" : ""}`}
+                onClick={() => setSidebarTab("memory")}
+              >
+                💭 Memory
+              </button>
             </nav>
 
             {/* Cockpit Tab */}
@@ -1037,6 +1044,15 @@ function App() {
                     </div>
                   )}
                 </div>
+              </>
+            )}
+
+            {/* Phase 10: Memory Browser Tab */}
+            {sidebarTab === "memory" && (
+              <>
+                <h2 className="sidebar-title">💭 Sovereign Hippocampus</h2>
+                <p className="sidebar-subtitle">View, search, and manage S-ION's memories</p>
+                <MemoryBrowser />
               </>
             )}
 
