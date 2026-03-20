@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 // Sentinel Report: The PII-scrubbed crash report
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SentinelReport {
     pub install_id: String,
     pub app_version: String,

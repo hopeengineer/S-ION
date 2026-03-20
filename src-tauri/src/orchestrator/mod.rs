@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::env;
 
 /// Root structure for the SAM_LOGIC.yaml manifest.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct SamLogic {
     pub version: String,
     pub engine_name: String,
@@ -29,19 +29,19 @@ pub struct SamLogic {
     pub safety: SafetyConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct Constitution {
     pub zero_assumption_directive: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct EngineeringStandards {
     pub html: String,
     pub css: String,
     pub logic: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct PrivacyConfig {
     pub network: String,
     pub storage: String,
@@ -54,7 +54,7 @@ pub struct PrivacyConfig {
     pub sentinel: SentinelConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct SentinelConfig {
     #[serde(default)]
     pub railway_endpoint: String,
@@ -84,14 +84,14 @@ fn default_batch_interval() -> u64 {
     300
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct UxLogic {
     pub jargon_filter: String,
     pub veto_power: String,
     pub theme: ThemeConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct ThemeConfig {
     pub background: String,
     pub accent: String,
@@ -101,7 +101,7 @@ pub struct ThemeConfig {
 // 8-Agent Swarm Roster
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct SwarmRoster {
     pub commander: SwarmAgent,
     pub audit_hook: SwarmAgent,
@@ -113,7 +113,7 @@ pub struct SwarmRoster {
     pub pro_designer: SwarmAgent,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct SwarmAgent {
     pub model: String,
     pub designation: String,
@@ -127,7 +127,7 @@ pub struct SwarmAgent {
 // Smart Mode Config (Gemini Flash Triage)
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct SmartModeConfig {
     pub triage_model: String,
     pub triage_api_env_key: String,
@@ -135,7 +135,7 @@ pub struct SmartModeConfig {
     pub categories: Vec<TriageCategory>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct TriageCategory {
     pub id: String,
     pub description: String,
@@ -146,7 +146,7 @@ pub struct TriageCategory {
 // Expert Mode Config (Manual Pins)
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct ExpertModeConfig {
     pub default_pins: HashMap<String, String>,
 }
@@ -155,7 +155,7 @@ pub struct ExpertModeConfig {
 // Audit Rules
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct AuditRules {
     pub require_approval_for: Vec<String>,
     pub max_parallel_agents: u32,
@@ -163,7 +163,7 @@ pub struct AuditRules {
     pub reject_if: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct CoPawConfig {
     pub bridge_url: String,
     pub channels: Vec<String>,
@@ -171,7 +171,7 @@ pub struct CoPawConfig {
     pub queue_strategy: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct SafetyConfig {
     pub sandbox: String,
     pub snapshot_before_execution: bool,
@@ -183,7 +183,7 @@ pub struct SafetyConfig {
 // Execution Plan — Kimi K2.5 Commander output
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct ExecutionStep {
     pub step_id: u32,
     pub agent: String,
@@ -192,21 +192,21 @@ pub struct ExecutionStep {
     pub depends_on: Vec<u32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct ExecutionPlan {
     pub intent: String,
     pub steps: Vec<ExecutionStep>,
     pub reasoning: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct AuditVerdict {
     pub approved: bool,
     pub reasoning: String,
     pub violations: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, specta::Type)]
 pub struct PipelineResult {
     pub stage: String,
     pub plan: Option<ExecutionPlan>,

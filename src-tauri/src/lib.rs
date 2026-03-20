@@ -5,6 +5,8 @@ use orchestrator::heartbeat::BridgeHeartbeat;
 use orchestrator::router::{self, DispatchResult, ExpertPins, OrchestrationResult, RuntimeMode};
 use orchestrator::sandbox::{Sandbox, SandboxConfig};
 use orchestrator::sentinel::{Sentinel, SentinelReport};
+use orchestrator::egress::SecurityEvent;
+use orchestrator::sandbox::SandboxResult as SandboxResultType;
 use orchestrator::sidecar_manager::SidecarManager;
 use orchestrator::vsock_proto::{VsockChannel, VsockMission};
 use orchestrator::{PipelineResult, SamLogic};
@@ -40,21 +42,21 @@ struct AppState {
 
 /// Returns the loaded SAM_LOGIC manifest as a JSON string.
 #[tauri::command]
+#[specta::specta]
 fn get_sam_logic(state: State<AppState>) -> SamLogic {
     state.sam_logic.clone()
 }
 
 /// Returns the current theme configuration from SAM_LOGIC.
 #[tauri::command]
-fn get_theme(state: State<AppState>) -> serde_json::Value {
-    serde_json::json!({
-        "background": state.sam_logic.ux_logic.theme.background,
-        "accent": state.sam_logic.ux_logic.theme.accent,
-    })
+#[specta::specta]
+fn get_theme(state: State<AppState>) -> orchestrator::ThemeConfig {
+    state.sam_logic.ux_logic.theme.clone()
 }
 
 /// Gets the current runtime mode (Smart or Expert).
 #[tauri::command]
+#[specta::specta]
 fn get_mode(state: State<AppState>) -> String {
     let mode = state.mode.lock().unwrap();
     match *mode {
@@ -65,6 +67,7 @@ fn get_mode(state: State<AppState>) -> String {
 
 /// Sets the runtime mode (Smart or Expert).
 #[tauri::command]
+#[specta::specta]
 fn set_mode(mode_str: String, state: State<AppState>) -> String {
     let new_mode = match mode_str.as_str() {
         "smart" | "Smart" => RuntimeMode::Smart,
@@ -83,6 +86,7 @@ fn set_mode(mode_str: String, state: State<AppState>) -> String {
 
 /// Gets the current Expert Mode model pins.
 #[tauri::command]
+#[specta::specta]
 fn get_model_pins(state: State<AppState>) -> std::collections::HashMap<String, String> {
     let pins = state.expert_pins.lock().unwrap();
     pins.pins.clone()
@@ -90,6 +94,7 @@ fn get_model_pins(state: State<AppState>) -> std::collections::HashMap<String, S
 
 /// Sets a model pin for a specific task category in Expert Mode.
 #[tauri::command]
+#[specta::specta]
 fn set_model_pin(category: String, agent_key: String, state: State<AppState>) -> String {
     let mut pins = state.expert_pins.lock().unwrap();
     pins.set_pin(&category, &agent_key);
@@ -101,6 +106,7 @@ fn set_model_pin(category: String, agent_key: String, state: State<AppState>) ->
 
 /// Phase 2A: Two-stage LLM pipeline (Kimi Commander → Opus Audit Hook).
 #[tauri::command]
+#[specta::specta]
 async fn route_intent_live(intent: String, state: State<'_, AppState>) -> Result<String, String> {
     let sam_logic = state.sam_logic.clone();
     let mut result: PipelineResult = orchestrator::route_intent_live(&intent, &sam_logic).await;
@@ -116,6 +122,7 @@ async fn route_intent_live(intent: String, state: State<'_, AppState>) -> Result
 
 /// Phase 2B: Smart Mode dispatcher (Gemini Flash triage → optimal model).
 #[tauri::command]
+#[specta::specta]
 async fn dispatch_smart(intent: String, state: State<'_, AppState>) -> Result<String, String> {
     let sam_logic = state.sam_logic.clone();
     let mut result: DispatchResult = router::dispatch_smart(&intent, &sam_logic).await;
@@ -142,6 +149,7 @@ async fn dispatch_smart(intent: String, state: State<'_, AppState>) -> Result<St
 
 /// Phase 2B: Expert Mode dispatcher (use pinned model for task category).
 #[tauri::command]
+#[specta::specta]
 fn dispatch_expert(
     intent: String,
     task_category: String,
@@ -154,6 +162,7 @@ fn dispatch_expert(
 
 /// Called by the frontend when the app wakes from sleep.
 #[tauri::command]
+#[specta::specta]
 fn resync_messages(state: State<AppState>) -> Vec<String> {
     let mut queue = state.pending_resync.lock().unwrap();
     queue.drain(..).collect()
@@ -161,6 +170,7 @@ fn resync_messages(state: State<AppState>) -> Vec<String> {
 
 /// Simulates queuing a message (for dev/testing).
 #[tauri::command]
+#[specta::specta]
 fn queue_message(message: String, state: State<AppState>) {
     let mut queue = state.pending_resync.lock().unwrap();
     queue.push(message);
@@ -172,28 +182,29 @@ fn queue_message(message: String, state: State<AppState>) {
 
 /// Returns the security log (egress pass/block events).
 #[tauri::command]
-fn get_security_log(state: State<AppState>) -> Vec<serde_json::Value> {
+#[specta::specta]
+fn get_security_log(state: State<AppState>) -> Vec<SecurityEvent> {
     let egress = state.egress.lock().unwrap();
-    let log = egress.get_log();
-    log.into_iter()
-        .map(|e| serde_json::to_value(e).unwrap_or_default())
-        .collect()
+    egress.get_log()
 }
 
 /// Returns the oldest pending Sentinel report (for consent toast).
 #[tauri::command]
+#[specta::specta]
 fn get_pending_report(state: State<AppState>) -> Option<SentinelReport> {
     state.sentinel.get_pending_report()
 }
 
 /// User approved: send the report to Railway.
 #[tauri::command]
+#[specta::specta]
 async fn approve_report(state: State<'_, AppState>) -> Result<String, String> {
     state.sentinel.approve_and_send().await
 }
 
 /// User dismissed: discard the pending report.
 #[tauri::command]
+#[specta::specta]
 fn dismiss_report(state: State<AppState>) -> String {
     state.sentinel.dismiss_report();
     "Report dismissed".into()
@@ -201,6 +212,7 @@ fn dismiss_report(state: State<AppState>) -> String {
 
 /// Check if the current install is the founder/developer.
 #[tauri::command]
+#[specta::specta]
 fn is_founder(state: State<AppState>) -> bool {
     state.sentinel.is_founder()
 }
@@ -211,6 +223,7 @@ fn is_founder(state: State<AppState>) -> bool {
 
 /// Execute a script in the sandbox. Returns SandboxResult with diff + snapshot ID.
 #[tauri::command]
+#[specta::specta]
 fn sandbox_execute(
     script: String,
     agent_key: String,
@@ -223,6 +236,7 @@ fn sandbox_execute(
 
 /// Apply sandbox changes to a target directory on the host.
 #[tauri::command]
+#[specta::specta]
 fn sandbox_apply(
     execution_id: String,
     target_dir: String,
@@ -236,6 +250,7 @@ fn sandbox_apply(
 
 /// Snap-Back: restore the pre-execution snapshot. All changes disappear.
 #[tauri::command]
+#[specta::specta]
 fn sandbox_snapback(snapshot_id: String, state: State<AppState>) -> Result<String, String> {
     let sandbox = state.sandbox.lock().unwrap();
     sandbox.snap_back(&snapshot_id)?;
@@ -247,11 +262,10 @@ fn sandbox_snapback(snapshot_id: String, state: State<AppState>) -> Result<Strin
 
 /// Get sandbox execution history.
 #[tauri::command]
-fn sandbox_history(state: State<AppState>) -> Vec<serde_json::Value> {
+#[specta::specta]
+fn sandbox_history(state: State<AppState>) -> Vec<SandboxResultType> {
     let sandbox = state.sandbox.lock().unwrap();
-    sandbox.get_history().into_iter()
-        .map(|r| serde_json::to_value(r).unwrap_or_default())
-        .collect()
+    sandbox.get_history()
 }
 
 // ──────────────────────────────────────────────────
@@ -261,6 +275,7 @@ fn sandbox_history(state: State<AppState>) -> Vec<serde_json::Value> {
 /// The full orchestration loop: prompt → triage → Knowledge text OR Action sandbox.
 /// This is the single entry point that replaces dispatch_smart for the connected pipeline.
 #[tauri::command]
+#[specta::specta]
 async fn execute_orchestration_loop(
     intent: String,
     _workspace_root: String,
@@ -336,14 +351,13 @@ async fn execute_orchestration_loop(
 
         match sandbox_result {
             Ok(sr) => {
-                let sr_json = serde_json::to_value(&sr).unwrap_or_default();
                 let result = OrchestrationResult {
                     track: "action".into(),
                     triage: Some(triage),
                     model_name,
                     response: Some(envelope.explanation.clone()),
                     envelope: Some(envelope),
-                    sandbox_result: Some(sr_json),
+                    sandbox_result: Some(sr),
                     error: None,
                 };
                 serde_json::to_string(&result)
@@ -385,6 +399,7 @@ async fn execute_orchestration_loop(
 /// Safely copy sandbox execution results to the user's actual project directory.
 /// Path-confined: validates target is within home dir, blocks traversal.
 #[tauri::command]
+#[specta::specta]
 fn sync_to_host(
     execution_id: String,
     workspace_root: String,
@@ -405,6 +420,7 @@ fn sync_to_host(
 
 /// Validate a URL against the egress allowlist.
 #[tauri::command]
+#[specta::specta]
 fn validate_egress(
     url: String,
     agent_key: String,
@@ -417,6 +433,7 @@ fn validate_egress(
 
 /// Add a user-defined domain to the egress allowlist at runtime.
 #[tauri::command]
+#[specta::specta]
 fn add_egress_domain(domain: String, state: State<AppState>) -> String {
     let mut egress = state.egress.lock().unwrap();
     egress.add_user_domain(&domain);
@@ -429,6 +446,7 @@ fn add_egress_domain(domain: String, state: State<AppState>) -> String {
 
 /// Initiate the Secret Handshake with the Railway bridge.
 #[tauri::command]
+#[specta::specta]
 async fn bridge_handshake(state: State<'_, AppState>) -> Result<String, String> {
     match state.heartbeat.handshake().await {
         Ok(true) => Ok("Bridge handshake: SUCCESS".into()),
@@ -439,6 +457,7 @@ async fn bridge_handshake(state: State<'_, AppState>) -> Result<String, String> 
 
 /// Heartbeat pulse: check for and claim the next pending mission.
 #[tauri::command]
+#[specta::specta]
 async fn bridge_pulse(state: State<'_, AppState>) -> Result<String, String> {
     match state.heartbeat.pulse().await {
         Ok(Some(mission)) => serde_json::to_string(&mission).map_err(|e| e.to_string()),
@@ -449,6 +468,7 @@ async fn bridge_pulse(state: State<'_, AppState>) -> Result<String, String> {
 
 /// Check how many missions are waiting on the bridge.
 #[tauri::command]
+#[specta::specta]
 async fn bridge_pending(state: State<'_, AppState>) -> Result<String, String> {
     let count = state.heartbeat.check_pending().await?;
     Ok(format!("{}", count))
@@ -456,6 +476,7 @@ async fn bridge_pending(state: State<'_, AppState>) -> Result<String, String> {
 
 /// Get locally cached missions.
 #[tauri::command]
+#[specta::specta]
 fn bridge_local_missions(state: State<AppState>) -> String {
     serde_json::to_string(&state.heartbeat.get_local_missions()).unwrap_or_default()
 }
@@ -466,6 +487,7 @@ fn bridge_local_missions(state: State<AppState>) -> String {
 
 /// Get current sidecar status for the Expert Mode sidebar.
 #[tauri::command]
+#[specta::specta]
 fn sidecar_status(state: State<AppState>) -> String {
     let sidecar = state.sidecar.lock().unwrap();
     sidecar.to_status_json()
@@ -473,6 +495,7 @@ fn sidecar_status(state: State<AppState>) -> String {
 
 /// Provision the sidecar (download kernel / install WSL2).
 #[tauri::command]
+#[specta::specta]
 fn sidecar_provision(state: State<AppState>) -> Result<String, String> {
     let mut sidecar = state.sidecar.lock().unwrap();
     // Provisioning creates directory structures (synchronous for now;
@@ -482,6 +505,7 @@ fn sidecar_provision(state: State<AppState>) -> Result<String, String> {
 
 /// Boot the VM sidecar for Expert Mode isolation.
 #[tauri::command]
+#[specta::specta]
 fn sidecar_boot(state: State<AppState>) -> Result<String, String> {
     let mut sidecar = state.sidecar.lock().unwrap();
     sidecar.boot_vm()
@@ -489,6 +513,7 @@ fn sidecar_boot(state: State<AppState>) -> Result<String, String> {
 
 /// Gracefully shut down the VM sidecar.
 #[tauri::command]
+#[specta::specta]
 fn sidecar_shutdown(state: State<AppState>) -> Result<String, String> {
     let mut sidecar = state.sidecar.lock().unwrap();
     sidecar.shutdown_vm()
@@ -496,6 +521,7 @@ fn sidecar_shutdown(state: State<AppState>) -> Result<String, String> {
 
 /// Get the latest health report from the Guest Agent.
 #[tauri::command]
+#[specta::specta]
 fn sidecar_health(state: State<AppState>) -> String {
     let vsock = state.vsock.lock().unwrap();
     match vsock.get_health() {
@@ -506,6 +532,7 @@ fn sidecar_health(state: State<AppState>) -> String {
 
 /// Check sidecar health (alive/ready/failed).
 #[tauri::command]
+#[specta::specta]
 fn sidecar_health_check(state: State<AppState>) -> Result<String, String> {
     let sidecar = state.sidecar.lock().unwrap();
     sidecar.health_check()
@@ -513,6 +540,7 @@ fn sidecar_health_check(state: State<AppState>) -> Result<String, String> {
 
 /// Ping the Guest Agent via vsock to verify it's alive.
 #[tauri::command]
+#[specta::specta]
 async fn vsock_ping(state: State<'_, AppState>) -> Result<String, String> {
     let port = {
         let vsock = state.vsock.lock().unwrap();
@@ -526,6 +554,7 @@ async fn vsock_ping(state: State<'_, AppState>) -> Result<String, String> {
 
 /// Send a mission to the Guest Agent via vsock and get the result.
 #[tauri::command]
+#[specta::specta]
 async fn vsock_send_mission(command: String, state: State<'_, AppState>) -> Result<String, String> {
     let port = {
         let vsock = state.vsock.lock().unwrap();
@@ -543,6 +572,7 @@ async fn vsock_send_mission(command: String, state: State<'_, AppState>) -> Resu
 /// Execute a bridge mission inside the sandbox.
 /// Pull from Railway → dispatch → sandbox → Action Card.
 #[tauri::command]
+#[specta::specta]
 async fn bridge_execute_mission(state: State<'_, AppState>) -> Result<String, String> {
     // Step 1: Pull the next mission from the bridge
     let mission = state.heartbeat.pulse().await?;
@@ -659,18 +689,15 @@ pub fn run() {
         sidecar: Mutex::new(sidecar),
         vsock: Mutex::new(vsock),
     };
-
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
-        .manage(app_state)
-        .invoke_handler(tauri::generate_handler![
+    // ── Phase 8: tauri-specta v2 Builder (bindings + invoke handler) ──
+    let mut builder = tauri_specta::Builder::<tauri::Wry>::new()
+        .commands(tauri_specta::collect_commands![
             get_sam_logic,
             get_theme,
             get_mode,
             set_mode,
             get_model_pins,
             set_model_pin,
-
             route_intent_live,
             dispatch_smart,
             dispatch_expert,
@@ -702,7 +729,28 @@ pub fn run() {
             vsock_send_mission,
             execute_orchestration_loop,
             sync_to_host,
-        ])
+        ]);
+
+    // Export TypeScript bindings on debug builds
+    #[cfg(debug_assertions)]
+    {
+        builder
+            .export(
+                specta_typescript::Typescript::default(),
+                "../src/bindings.ts",
+            )
+            .expect("Failed to export TypeScript bindings");
+        println!("📝 TypeScript bindings exported to src/bindings.ts");
+    }
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .manage(app_state)
+        .invoke_handler(builder.invoke_handler())
+        .setup(move |app| {
+            builder.mount_events(app);
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running S-ION");
 }

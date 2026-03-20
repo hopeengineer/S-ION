@@ -8,7 +8,7 @@ use crate::orchestrator::sandbox::SandboxBackend;
 // ──────────────────────────────────────────────────
 
 /// The lifecycle state of the isolation sidecar.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, specta::Type)]
 pub enum SidecarStatus {
     /// macOS Smart Mode: uses sandbox-exec, no VM needed
     NotNeeded,

@@ -25,7 +25,7 @@ fn extract_field(content: &str, field: &str) -> Option<String> {
 // Runtime Mode
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, specta::Type)]
 pub enum RuntimeMode {
     Smart,
     Expert,
@@ -35,7 +35,7 @@ pub enum RuntimeMode {
 // Triage Result (Smart Mode)
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct TriageResult {
     pub category: String, // e.g. "simple_qa", "parallel_ui", "deep_code", "long_context"
     pub route_to: String, // agent key: "analyst", "commander", "builder", "visionary"
@@ -47,7 +47,7 @@ pub struct TriageResult {
 // Dispatch Result
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct DispatchResult {
     pub mode: String, // "smart" or "expert"
     pub triage: Option<TriageResult>,
@@ -62,7 +62,7 @@ pub struct DispatchResult {
 // Expert Mode Pins
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ExpertPins {
     pub pins: HashMap<String, String>, // task_category → agent_key
 }
@@ -494,7 +494,7 @@ pub fn resolve_agent_public(agent_key: &str, sam_logic: &SamLogic) -> (String, S
 
 /// The strict machine-to-machine JSON contract that LLMs must produce
 /// when the triage routes an intent to the Action track (deep_code, parallel_ui).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ActionEnvelope {
     pub mission_id: String,
     /// Human-readable explanation for the UI (shown above the Action Card)
@@ -506,7 +506,7 @@ pub struct ActionEnvelope {
 }
 
 /// The result of the full orchestration loop.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct OrchestrationResult {
     /// "knowledge" or "action"
     pub track: String,
@@ -519,7 +519,7 @@ pub struct OrchestrationResult {
     /// Parsed ActionEnvelope (Action track, pre-sandbox)
     pub envelope: Option<ActionEnvelope>,
     /// Sandbox execution result (Action track, post-sandbox)
-    pub sandbox_result: Option<serde_json::Value>,
+    pub sandbox_result: Option<super::sandbox::SandboxResult>,
     /// Error if any stage failed
     pub error: Option<String>,
 }

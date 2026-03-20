@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 // Security Event (logged for every network request)
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SecurityEvent {
     pub timestamp: String,
     pub domain: String,

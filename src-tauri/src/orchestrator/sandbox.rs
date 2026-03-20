@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 // Platform Detection
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub enum SandboxBackend {
     /// macOS: Process isolation with Apple sandbox-exec + temp dirs
     MacOSProcess,
@@ -70,7 +70,7 @@ impl Default for SandboxConfig {
 // Snapshot: The "Snap-Back" State
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct Snapshot {
     pub id: String,
     pub created_at: String,
@@ -168,7 +168,7 @@ impl Snapshot {
 // Sandbox Result (returned to the Action Card)
 // ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SandboxResult {
     pub execution_id: String,
     pub agent_key: String,
@@ -184,7 +184,7 @@ pub struct SandboxResult {
     pub snapshot_id: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct FileChange {
     pub status: String, // "added", "modified", "deleted"
     pub before: Option<String>,
