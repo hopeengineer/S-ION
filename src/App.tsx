@@ -982,6 +982,27 @@ function App() {
                   >
                     🔥 View Hot Spots
                   </button>
+                  <button
+                    disabled={!workspacePath}
+                    onClick={async () => {
+                      try {
+                        setShadowMessage('Building atlas (tree-sitter AST)...');
+                        const res = await commands.shadowGetAtlas(workspacePath);
+                        if (res.status === 'error') throw new Error(res.error);
+                        const atlas = JSON.parse(res.data);
+                        const topFiles = Object.entries(atlas.files as Record<string, unknown[]>)
+                          .sort((a, b) => b[1].length - a[1].length)
+                          .slice(0, 5);
+                        const top = topFiles.map(([f, syms]) => `${f} (${syms.length})`).join(', ');
+                        setShadowMessage(`📊 Atlas: ${atlas.total_symbols} symbols in ${atlas.total_files} files. Top: ${top}`);
+                      } catch (e: unknown) {
+                        setShadowMessage(`❌ ${e instanceof Error ? e.message : 'Failed'}`);
+                      }
+                    }}
+                    style={{ width: '100%', padding: '5px 10px', background: 'var(--sion-surface)', color: 'var(--sion-text-primary)', border: '1px solid var(--sion-border)', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', opacity: !workspacePath ? 0.5 : 1, marginTop: '4px' }}
+                  >
+                    📊 View Atlas
+                  </button>
                 </div>
 
                 {/* Shadow Doc Status */}
