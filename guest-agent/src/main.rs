@@ -18,8 +18,13 @@ use std::time::Instant;
 // Vsock Frame Protocol: [4-byte BE length][JSON payload]
 // ──────────────────────────────────────────────────
 
-const WORKSPACE_DIR: &str = "/workspace";
+const DEFAULT_WORKSPACE: &str = "/workspace";
 const VSOCK_PORT: u32 = 1234;
+
+/// Get the workspace directory — configurable via SION_WORKSPACE env var.
+fn workspace_dir() -> String {
+    std::env::var("SION_WORKSPACE").unwrap_or_else(|_| DEFAULT_WORKSPACE.to_string())
+}
 
 /// Read one framed message: [4-byte big-endian length][JSON bytes]
 fn read_frame(stream: &mut impl Read) -> Result<Vec<u8>, String> {
@@ -234,7 +239,7 @@ fn diff_workspace(
 // ──────────────────────────────────────────────────
 
 fn execute_mission(mission: Mission) -> MissionResult {
-    let workspace = PathBuf::from(WORKSPACE_DIR);
+    let workspace = PathBuf::from(workspace_dir());
     let _ = std::fs::create_dir_all(&workspace);
 
     // Seed files into workspace
@@ -259,6 +264,8 @@ fn execute_mission(mission: Mission) -> MissionResult {
         };
     }
 
+    eprintln!("   Timeout: {}s", mission.timeout_secs);
+
     // Snapshot before execution
     let before_state = snapshot_workspace(&workspace);
 
@@ -269,7 +276,7 @@ fn execute_mission(mission: Mission) -> MissionResult {
         .arg(&mission.command)
         .current_dir(&workspace)
         .env_clear()
-        .env("HOME", WORKSPACE_DIR)
+        .env("HOME", workspace_dir())
         .env("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
         .env("SION_GUEST", "1")
         .output();
@@ -314,7 +321,7 @@ fn build_health_report(boot_time: &Instant) -> HealthReport {
     // Read /proc/loadavg for CPU approximation
     let cpu = read_cpu_load();
 
-    let workspace = PathBuf::from(WORKSPACE_DIR);
+    let workspace = PathBuf::from(workspace_dir());
     let file_count = std::fs::read_dir(&workspace)
         .map(|entries| entries.count())
         .unwrap_or(0);
