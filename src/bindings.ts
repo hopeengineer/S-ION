@@ -329,6 +329,51 @@ async syncToHost(executionId: string, workspaceRoot: string) : Promise<Result<st
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Scan a workspace directory: file tree, tech stack, key files, dependencies.
+ */
+async shadowScanWorkspace(path: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("shadow_scan_workspace", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Get git hot spots (30-day churn analysis) for a workspace.
+ */
+async shadowGetHotspots(path: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("shadow_get_hotspots", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Check shadow doc status (which docs exist, when last updated).
+ */
+async shadowStatus(path: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("shadow_status", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Generate shadow docs for a workspace using LLM analysis.
+ * Scans the project, analyzes hot spots, then calls the Analyst to produce docs.
+ */
+async shadowGenerate(path: string) : Promise<Result<string, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("shadow_generate", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 

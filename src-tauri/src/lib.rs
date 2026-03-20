@@ -601,6 +601,109 @@ async fn bridge_execute_mission(state: State<'_, AppState>) -> Result<String, St
 }
 
 // ──────────────────────────────────────────────────
+// Phase 9: Auto-Contextual Shadow IPC Commands
+// ──────────────────────────────────────────────────
+
+/// Scan a workspace directory: file tree, tech stack, key files, dependencies.
+#[tauri::command]
+#[specta::specta]
+fn shadow_scan_workspace(path: String) -> Result<String, String> {
+    let root = std::path::Path::new(&path);
+    let scan = orchestrator::shadow_scanner::scan_workspace(root)?;
+    serde_json::to_string(&scan).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Get git hot spots (30-day churn analysis) for a workspace.
+#[tauri::command]
+#[specta::specta]
+fn shadow_get_hotspots(path: String) -> Result<String, String> {
+    let root = std::path::Path::new(&path);
+    let report = orchestrator::shadow_temporal::analyze_hot_spots(root)?;
+    serde_json::to_string(&report).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Check shadow doc status (which docs exist, when last updated).
+#[tauri::command]
+#[specta::specta]
+fn shadow_status(path: String) -> Result<String, String> {
+    let shadow_dir = std::path::Path::new(&path).join(".sion-shadow");
+    let docs = ["ARCHITECTURE.md", "STACK.md", "STATE.md", "PATTERNS.md", "GOTCHAS.md", "ATLAS.json", "HOTSPOTS.json"];
+    let mut status: Vec<serde_json::Value> = Vec::new();
+
+    for doc in &docs {
+        let doc_path = shadow_dir.join(doc);
+        if doc_path.exists() {
+            let modified = std::fs::metadata(&doc_path)
+                .and_then(|m| m.modified())
+                .map(|t| {
+                    let elapsed = t.elapsed().unwrap_or_default();
+                    if elapsed.as_secs() < 3600 { format!("{}m ago", elapsed.as_secs() / 60) }
+                    else if elapsed.as_secs() < 86400 { format!("{}h ago", elapsed.as_secs() / 3600) }
+                    else { format!("{}d ago", elapsed.as_secs() / 86400) }
+                })
+                .unwrap_or_else(|_| "unknown".into());
+            status.push(serde_json::json!({ "doc": doc, "exists": true, "modified": modified }));
+        } else {
+            status.push(serde_json::json!({ "doc": doc, "exists": false }));
+        }
+    }
+
+    serde_json::to_string(&status).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Generate shadow docs for a workspace using LLM analysis.
+/// Scans the project, analyzes hot spots, then calls the Analyst to produce docs.
+#[tauri::command]
+#[specta::specta]
+async fn shadow_generate(
+    path: String,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let root = std::path::Path::new(&path);
+    let shadow_dir = root.join(".sion-shadow");
+
+    // Create shadow directory
+    std::fs::create_dir_all(&shadow_dir)
+        .map_err(|e| format!("Failed to create .sion-shadow: {}", e))?;
+
+    // Step 1: Scan workspace
+    let scan = orchestrator::shadow_scanner::scan_workspace(root)?;
+
+    // Step 2: Git hot spots
+    let hotspots = orchestrator::shadow_temporal::analyze_hot_spots(root)?;
+
+    // Save hot spots JSON
+    let hotspots_json = serde_json::to_string_pretty(&hotspots)
+        .map_err(|e| format!("Failed to serialize hotspots: {}", e))?;
+    std::fs::write(shadow_dir.join("HOTSPOTS.json"), &hotspots_json)
+        .map_err(|e| format!("Failed to write HOTSPOTS.json: {}", e))?;
+
+    // Step 3: Generate shadow docs via LLM
+    let sam_logic = state.sam_logic.clone();
+    let generated = orchestrator::shadow_gen::generate_shadow_docs(&scan, &hotspots, &sam_logic).await?;
+
+    // Step 4: Write each doc
+    for (filename, content) in &generated {
+        std::fs::write(shadow_dir.join(filename), content)
+            .map_err(|e| format!("Failed to write {}: {}", filename, e))?;
+    }
+
+    println!("📝 Shadow docs generated: {} files in {}", generated.len(), shadow_dir.display());
+
+    Ok(serde_json::json!({
+        "shadow_dir": shadow_dir.to_string_lossy(),
+        "docs_generated": generated.keys().collect::<Vec<_>>(),
+        "scan_stats": {
+            "total_files": scan.stats.total_files,
+            "source_files": scan.stats.source_files,
+            "languages": scan.stack.languages,
+            "frameworks": scan.stack.frameworks,
+        },
+        "hotspots_count": hotspots.spots.len(),
+    }).to_string())
+}
+
+// ──────────────────────────────────────────────────
 // Application Entry
 // ──────────────────────────────────────────────────
 
@@ -729,6 +832,10 @@ pub fn run() {
             vsock_send_mission,
             execute_orchestration_loop,
             sync_to_host,
+            shadow_scan_workspace,
+            shadow_get_hotspots,
+            shadow_status,
+            shadow_generate,
         ]);
 
     // Export TypeScript bindings on debug builds
