@@ -1,0 +1,295 @@
+/* ──────────────────────────────────────────────────
+   S-ION Sidecar Monitor
+   Expert Mode telemetry widget
+   ────────────────────────────────────────────────── */
+
+.sidecar-monitor {
+  margin-top: auto;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 12px;
+  transition: border-color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* ── Temperature States ── */
+
+.sidecar-cold {
+  background: rgba(0, 0, 0, 0.02);
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+.sidecar-warm {
+  background: rgba(255, 255, 255, 0.95);
+  border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+.sidecar-hot {
+  background: linear-gradient(135deg, rgba(255, 69, 0, 0.04), rgba(255, 69, 0, 0.01));
+  border-top-color: #ff4500;
+  box-shadow: 0 -1px 8px rgba(255, 69, 0, 0.12);
+}
+
+/* ── Header ── */
+
+.sidecar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sidecar-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidecar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sidecar-dot-cold {
+  background: #adb5bd;
+}
+
+.sidecar-dot-warm {
+  background: #868e96;
+  animation: sidecar-pulse 2s ease-in-out infinite;
+}
+
+.sidecar-dot-hot {
+  background: #ff4500;
+  box-shadow: 0 0 6px rgba(255, 69, 0, 0.5);
+  animation: sidecar-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes sidecar-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes sidecar-glow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(255, 69, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(255, 69, 0, 0.6);
+  }
+}
+
+.sidecar-label {
+  font-weight: 600;
+  color: #212529;
+  letter-spacing: 0.3px;
+}
+
+.sidecar-hot .sidecar-label {
+  color: #ff4500;
+}
+
+.sidecar-platform {
+  font-size: 10px;
+  color: #868e96;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Provisioning ── */
+
+.sidecar-provision {
+  margin-top: 6px;
+}
+
+.sidecar-provision-text {
+  margin: 0 0 8px;
+  color: #495057;
+  line-height: 1.5;
+  font-size: 11px;
+}
+
+.sidecar-provision-btn {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: #f8f9fa;
+  color: #212529;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidecar-provision-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.sidecar-provision-msg {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #868e96;
+}
+
+/* ── Boot / Shutdown Buttons ── */
+
+.sidecar-boot-btn {
+  width: 100%;
+  padding: 7px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: #f8f9fa;
+  color: #212529;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidecar-boot-btn:hover {
+  background: #e9ecef;
+  border-color: #ff4500;
+  color: #ff4500;
+}
+
+.sidecar-shutdown-btn {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid rgba(255, 69, 0, 0.2);
+  border-radius: 6px;
+  background: transparent;
+  color: #868e96;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 8px;
+}
+
+.sidecar-shutdown-btn:hover {
+  background: rgba(255, 69, 0, 0.06);
+  color: #ff4500;
+  border-color: #ff4500;
+}
+
+/* ── Telemetry ── */
+
+.sidecar-telemetry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidecar-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sidecar-metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.sidecar-metric-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #868e96;
+  font-weight: 600;
+}
+
+.sidecar-metric-value {
+  font-size: 11px;
+  color: #495057;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.sidecar-warning {
+  color: #e03131 !important;
+  font-weight: 700;
+  animation: sidecar-flash 0.8s ease-in-out infinite;
+}
+
+@keyframes sidecar-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Progress Bars ── */
+
+.sidecar-bar {
+  height: 4px;
+  background: #f1f3f5;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.sidecar-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+  background: #868e96;
+}
+
+.sidecar-hot .sidecar-bar-fill {
+  background: #ff4500;
+}
+
+.sidecar-bar-warning {
+  background: #e03131 !important;
+  animation: sidecar-flash 0.8s ease-in-out infinite;
+}
+
+.sidecar-bar-cpu {
+  background: #868e96;
+}
+
+.sidecar-hot .sidecar-bar-cpu {
+  background: #ff6b35;
+}
+
+/* ── Stats Row ── */
+
+.sidecar-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.sidecar-stat {
+  font-size: 10px;
+  color: #868e96;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidecar-snapback {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.sidecar-snapback.ready {
+  color: #2b8a3e;
+  background: rgba(43, 138, 62, 0.08);
+}
+
+.sidecar-snapback.not-ready {
+  color: #e03131;
+  background: rgba(224, 49, 49, 0.08);
+}
+
+/* ── Smart Mode Message ── */
+
+.sidecar-smart-msg {
+  margin: 0;
+  font-size: 11px;
+  color: #868e96;
+  font-style: italic;
+}

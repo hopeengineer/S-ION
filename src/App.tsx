@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
+import SidecarMonitor from "./SidecarMonitor";
 
 const appWindow = getCurrentWindow();
 
@@ -605,6 +606,9 @@ function App() {
                 </div>
               </>
             )}
+
+            {/* Sidecar Monitor — always visible at sidebar bottom */}
+            <SidecarMonitor />
           </aside>
         )}
 
