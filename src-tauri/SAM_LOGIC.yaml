@@ -78,7 +78,7 @@ swarm:
       - "code_review"
 
   analyst:
-    model: "deepseek-v3.2"
+    model: "deepseek-chat"
     designation: "The Analyst"
     role: "Low-cost high-logic provider. Handles simple Q&A, summaries, web research, and general reasoning at optimal price-performance."
     api_env_key: "DEEPSEEK_API_KEY"

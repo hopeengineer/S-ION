@@ -189,11 +189,11 @@ pub async fn call_deepseek(intent: &str, sam_logic: &SamLogic) -> Result<String,
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
-            "model": "deepseek-v3.2",
+            "model": sam_logic.swarm.analyst.model,
             "messages": [
                 {
                     "role": "system",
-                    "content": format!("You are S-ION's Analyst (DeepSeek V3.2). Provide clear, concise, high-quality answers.\n{}", sam_logic.constitution.zero_assumption_directive)
+                    "content": format!("You are S-ION's Analyst ({}). Provide clear, concise, high-quality answers.\n{}", sam_logic.swarm.analyst.model, sam_logic.constitution.zero_assumption_directive)
                 },
                 { "role": "user", "content": intent }
             ],
