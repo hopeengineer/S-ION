@@ -4,7 +4,7 @@ use orchestrator::egress::EgressFilter;
 use orchestrator::heartbeat::BridgeHeartbeat;
 use orchestrator::router::{self, DispatchResult, ExpertPins, OrchestrationResult, RuntimeMode};
 use orchestrator::sandbox::{Sandbox, SandboxConfig};
-use orchestrator::sentinel::Sentinel;
+use orchestrator::sentinel::{Sentinel, SentinelReport};
 use orchestrator::sidecar_manager::SidecarManager;
 use orchestrator::vsock_proto::{VsockChannel, VsockMission};
 use orchestrator::{PipelineResult, SamLogic};
@@ -40,8 +40,8 @@ struct AppState {
 
 /// Returns the loaded SAM_LOGIC manifest as a JSON string.
 #[tauri::command]
-fn get_sam_logic(state: State<AppState>) -> String {
-    serde_json::to_string_pretty(&state.sam_logic).unwrap_or_default()
+fn get_sam_logic(state: State<AppState>) -> SamLogic {
+    state.sam_logic.clone()
 }
 
 /// Returns the current theme configuration from SAM_LOGIC.
@@ -57,7 +57,10 @@ fn get_theme(state: State<AppState>) -> serde_json::Value {
 #[tauri::command]
 fn get_mode(state: State<AppState>) -> String {
     let mode = state.mode.lock().unwrap();
-    serde_json::to_string(&*mode).unwrap_or_default()
+    match *mode {
+        RuntimeMode::Smart => "Smart".into(),
+        RuntimeMode::Expert => "Expert".into(),
+    }
 }
 
 /// Sets the runtime mode (Smart or Expert).
@@ -80,9 +83,9 @@ fn set_mode(mode_str: String, state: State<AppState>) -> String {
 
 /// Gets the current Expert Mode model pins.
 #[tauri::command]
-fn get_model_pins(state: State<AppState>) -> String {
+fn get_model_pins(state: State<AppState>) -> std::collections::HashMap<String, String> {
     let pins = state.expert_pins.lock().unwrap();
-    serde_json::to_string(&pins.pins).unwrap_or_default()
+    pins.pins.clone()
 }
 
 /// Sets a model pin for a specific task category in Expert Mode.
@@ -94,11 +97,7 @@ fn set_model_pin(category: String, agent_key: String, state: State<AppState>) ->
     format!("Pinned {} to {}", category, agent_key)
 }
 
-/// Phase 1 fallback: Routes a user intent using the heuristic keyword matcher.
-#[tauri::command]
-fn route_intent(intent: &str, state: State<AppState>) -> String {
-    state.sam_logic.route_heuristic(intent)
-}
+
 
 /// Phase 2A: Two-stage LLM pipeline (Kimi Commander → Opus Audit Hook).
 #[tauri::command]
@@ -173,19 +172,18 @@ fn queue_message(message: String, state: State<AppState>) {
 
 /// Returns the security log (egress pass/block events).
 #[tauri::command]
-fn get_security_log(state: State<AppState>) -> String {
+fn get_security_log(state: State<AppState>) -> Vec<serde_json::Value> {
     let egress = state.egress.lock().unwrap();
     let log = egress.get_log();
-    serde_json::to_string(&log).unwrap_or_default()
+    log.into_iter()
+        .map(|e| serde_json::to_value(e).unwrap_or_default())
+        .collect()
 }
 
 /// Returns the oldest pending Sentinel report (for consent toast).
 #[tauri::command]
-fn get_pending_report(state: State<AppState>) -> String {
-    match state.sentinel.get_pending_report() {
-        Some(r) => serde_json::to_string(&r).unwrap_or_default(),
-        None => "null".into(),
-    }
+fn get_pending_report(state: State<AppState>) -> Option<SentinelReport> {
+    state.sentinel.get_pending_report()
 }
 
 /// User approved: send the report to Railway.
@@ -249,9 +247,11 @@ fn sandbox_snapback(snapshot_id: String, state: State<AppState>) -> Result<Strin
 
 /// Get sandbox execution history.
 #[tauri::command]
-fn sandbox_history(state: State<AppState>) -> String {
+fn sandbox_history(state: State<AppState>) -> Vec<serde_json::Value> {
     let sandbox = state.sandbox.lock().unwrap();
-    serde_json::to_string(&sandbox.get_history()).unwrap_or_default()
+    sandbox.get_history().into_iter()
+        .map(|r| serde_json::to_value(r).unwrap_or_default())
+        .collect()
 }
 
 // ──────────────────────────────────────────────────
@@ -670,7 +670,7 @@ pub fn run() {
             set_mode,
             get_model_pins,
             set_model_pin,
-            route_intent,
+
             route_intent_live,
             dispatch_smart,
             dispatch_expert,

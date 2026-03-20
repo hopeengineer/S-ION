@@ -198,19 +198,32 @@ function App() {
   const [orchResult, setOrchResult] = useState<OrchestrationResult | null>(null);
   const [applyingChanges, setApplyingChanges] = useState(false);
 
+  // Sandbox history state
+  const [sandboxHistory, setSandboxHistory] = useState<SandboxResult[]>([]);
+
+  // Egress domain input
+  const [egressDomain, setEgressDomain] = useState("");
+
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("sion-theme", theme);
   }, [theme]);
 
-  // Load pins from Rust backend on mount
   useEffect(() => {
-    invoke<string>("get_model_pins").then((res) => {
-      try { setPins(JSON.parse(res)); } catch { }
-    });
-    // Check founder status
+    // Hydrate state from Rust backend on mount
+    invoke<Record<string, string>>("get_model_pins").then(setPins).catch(() => { });
     invoke<boolean>("is_founder").then(setIsFounder).catch(() => { });
+    invoke<string>("get_mode").then((m) => {
+      if (m === "Smart" || m === "Expert") setMode(m.toLowerCase() as "smart" | "expert");
+    }).catch(() => { });
+    invoke<{ background: string; accent: string }>("get_theme").then((t) => {
+      document.documentElement.style.setProperty("--sion-accent", t.accent);
+    }).catch(() => { });
+    // Drain any pending messages from sleep/wake
+    invoke<string[]>("resync_messages").then((msgs) => {
+      msgs.forEach((m) => console.log("🔄 Resynced:", m));
+    }).catch(() => { });
   }, []);
 
   // Ctrl+Shift+S: toggle hidden Sentinel tab
@@ -231,15 +244,12 @@ function App() {
   useEffect(() => {
     if (!sidebarOpen) return;
     const poll = setInterval(() => {
-      invoke<string>("get_security_log").then((res) => {
-        try { setSecurityLog(JSON.parse(res)); } catch { }
-      });
-      invoke<string>("get_pending_report").then((res) => {
-        try {
-          const parsed = JSON.parse(res);
-          setPendingReport(parsed || null);
-        } catch { setPendingReport(null); }
-      });
+      invoke<unknown[]>("get_security_log").then((log) => {
+        setSecurityLog(log as SecurityEvent[]);
+      }).catch(() => { });
+      invoke<SentinelReport | null>("get_pending_report").then((report) => {
+        setPendingReport(report);
+      }).catch(() => { });
     }, 2000);
     return () => clearInterval(poll);
   }, [sidebarOpen]);
@@ -834,6 +844,65 @@ function App() {
                         <span className="security-time">
                           {new Date(evt.timestamp).toLocaleTimeString()}
                         </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Egress Domain Control */}
+                <div className="egress-domain-control" style={{ padding: '8px 12px', display: 'flex', gap: '6px', marginTop: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Add trusted domain..."
+                    value={egressDomain}
+                    onChange={(e) => setEgressDomain(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter' && egressDomain.trim()) {
+                        await invoke('add_egress_domain', { domain: egressDomain.trim() });
+                        setEgressDomain('');
+                      }
+                    }}
+                    style={{ flex: 1, padding: '4px 8px', background: 'var(--sion-surface)', color: 'var(--sion-text-primary)', border: '1px solid var(--sion-border)', borderRadius: '4px', fontSize: '12px' }}
+                  />
+                  <button
+                    onClick={async () => {
+                      if (egressDomain.trim()) {
+                        await invoke('add_egress_domain', { domain: egressDomain.trim() });
+                        setEgressDomain('');
+                      }
+                    }}
+                    style={{ padding: '4px 10px', background: 'var(--sion-accent)', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', cursor: 'pointer' }}
+                  >
+                    + Add
+                  </button>
+                </div>
+
+                {/* Sandbox History */}
+                <div style={{ padding: '8px 12px', marginTop: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <h3 style={{ margin: 0, fontSize: '13px', color: 'var(--sion-text-primary)' }}>📦 Sandbox History</h3>
+                    <button
+                      onClick={async () => {
+                        const history = await invoke<SandboxResult[]>('sandbox_history');
+                        setSandboxHistory(history);
+                      }}
+                      style={{ padding: '2px 8px', background: 'var(--sion-surface)', color: 'var(--sion-text-secondary)', border: '1px solid var(--sion-border)', borderRadius: '4px', fontSize: '10px', cursor: 'pointer' }}
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                  {sandboxHistory.length === 0 ? (
+                    <p style={{ fontSize: '12px', color: 'var(--sion-text-secondary)' }}>No sandbox executions yet.</p>
+                  ) : (
+                    sandboxHistory.map((entry, i) => (
+                      <div key={i} style={{ padding: '6px 8px', marginBottom: '4px', background: 'var(--sion-surface)', borderRadius: '4px', fontSize: '11px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--sion-text-primary)' }}>
+                          <span>🔧 {entry.agent_key}</span>
+                          <span style={{ color: entry.exit_code === 0 ? '#4ade80' : '#f87171' }}>Exit: {entry.exit_code}</span>
+                        </div>
+                        <div style={{ color: 'var(--sion-text-secondary)', marginTop: '2px' }}>
+                          {Object.keys(entry.file_changes || {}).length} file(s) changed
+                        </div>
                       </div>
                     ))
                   )}
