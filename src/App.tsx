@@ -141,7 +141,7 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState("terminal_cli");
 
   // Sidebar tab state
-  const [sidebarTab, setSidebarTab] = useState<"cockpit" | "security" | "sentinel">("cockpit");
+  const [sidebarTab, setSidebarTab] = useState<"cockpit" | "security" | "sentinel" | "shadow">("cockpit");
 
   // Security Dashboard state
   const [securityLog, setSecurityLog] = useState<SecurityEvent[]>([]);
@@ -166,6 +166,14 @@ function App() {
 
   // Egress domain input
   const [egressDomain, setEgressDomain] = useState("");
+
+  // Phase 9: Shadow workspace state
+  const [workspacePath, setWorkspacePath] = useState(() =>
+    localStorage.getItem("sion-workspace-path") || ""
+  );
+  const [shadowStatus, setShadowStatus] = useState<"idle" | "scanning" | "generating" | "done" | "error">("idle");
+  const [shadowMessage, setShadowMessage] = useState("");
+  const [shadowDocs, setShadowDocs] = useState<Array<{doc: string; exists: boolean; modified?: string}>>([]);
 
   // Apply theme to document
   useEffect(() => {
@@ -228,7 +236,7 @@ function App() {
     try {
       if (mode === "smart") {
         // Phase 7: Two-Track Orchestration Loop
-        const orch = await commands.executeOrchestrationLoop(intent, "/tmp/sion-workspace");
+        const orch = await commands.executeOrchestrationLoop(intent, workspacePath || "/tmp/sion-workspace");
         if (orch.status === "error") throw new Error(orch.error);
         const parsed: OrchestrationResult = JSON.parse(orch.data);
         setOrchResult(parsed);
@@ -607,7 +615,7 @@ function App() {
                   onClick={async () => {
                     setApplyingChanges(true);
                     try {
-                      const res = await commands.syncToHost(actionCard.execution_id, "/tmp/sion-workspace");
+                      const res = await commands.syncToHost(actionCard.execution_id, workspacePath || "/tmp/sion-workspace");
                       if (res.status === "error") throw new Error(res.error);
                       const parsed = JSON.parse(res.data);
                       alert(`✅ Applied ${parsed.applied} file(s) to workspace`);
@@ -713,6 +721,12 @@ function App() {
                 onClick={() => setSidebarTab("security")}
               >
                 🛡️ Security
+              </button>
+              <button
+                className={`sidebar-tab ${sidebarTab === "shadow" ? "active" : ""}`}
+                onClick={() => setSidebarTab("shadow")}
+              >
+                🧠 Shadow
               </button>
             </nav>
 
@@ -870,6 +884,137 @@ function App() {
                 <p className="sidebar-subtitle">Founder's telemetry view</p>
                 <div className="sentinel-placeholder">
                   <p>Aggregate error data from Railway will appear here once the endpoint is configured.</p>
+                </div>
+              </>
+            )}
+
+            {/* Phase 9: Shadow Tab */}
+            {sidebarTab === "shadow" && (
+              <>
+                <h2 className="sidebar-title">🧠 Contextual Shadow</h2>
+                <p className="sidebar-subtitle">Auto-map any project for deep AI understanding</p>
+
+                {/* Workspace Path */}
+                <div style={{ padding: '8px 12px' }}>
+                  <label style={{ fontSize: '11px', color: 'var(--sion-text-secondary)', marginBottom: '4px', display: 'block' }}>Workspace Path</label>
+                  <input
+                    type="text"
+                    placeholder="/path/to/your/project"
+                    value={workspacePath}
+                    onChange={(e) => {
+                      setWorkspacePath(e.target.value);
+                      localStorage.setItem("sion-workspace-path", e.target.value);
+                    }}
+                    style={{ width: '100%', padding: '6px 8px', background: 'var(--sion-surface)', color: 'var(--sion-text-primary)', border: '1px solid var(--sion-border)', borderRadius: '6px', fontSize: '12px', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ padding: '4px 12px', display: 'flex', gap: '6px' }}>
+                  <button
+                    disabled={!workspacePath || shadowStatus === 'scanning' || shadowStatus === 'generating'}
+                    onClick={async () => {
+                      try {
+                        setShadowStatus('scanning');
+                        setShadowMessage('Scanning workspace...');
+                        const scanRes = await commands.shadowScanWorkspace(workspacePath);
+                        if (scanRes.status === 'error') throw new Error(scanRes.error);
+                        const scan = JSON.parse(scanRes.data);
+                        setShadowMessage(`✅ Scanned: ${scan.stats.total_files} files, ${scan.stack.languages.join(', ')}`);
+                        setShadowStatus('done');
+                      } catch (e: unknown) {
+                        setShadowStatus('error');
+                        setShadowMessage(`❌ ${e instanceof Error ? e.message : 'Scan failed'}`);
+                      }
+                    }}
+                    style={{ flex: 1, padding: '6px 10px', background: 'var(--sion-surface)', color: 'var(--sion-text-primary)', border: '1px solid var(--sion-border)', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', opacity: !workspacePath ? 0.5 : 1 }}
+                  >
+                    🔍 Scan
+                  </button>
+                  <button
+                    disabled={!workspacePath || shadowStatus === 'scanning' || shadowStatus === 'generating'}
+                    onClick={async () => {
+                      try {
+                        setShadowStatus('generating');
+                        setShadowMessage('Generating shadow docs (calling Analyst)...');
+                        const genRes = await commands.shadowGenerate(workspacePath);
+                        if (genRes.status === 'error') throw new Error(genRes.error);
+                        const result = JSON.parse(genRes.data);
+                        setShadowMessage(`✅ Generated ${result.docs_generated.length} docs (${result.scan_stats.source_files} source files)`);
+                        setShadowStatus('done');
+
+                        // Refresh status
+                        const statusRes = await commands.shadowStatus(workspacePath);
+                        if (statusRes.status === 'ok') setShadowDocs(JSON.parse(statusRes.data));
+                      } catch (e: unknown) {
+                        setShadowStatus('error');
+                        setShadowMessage(`❌ ${e instanceof Error ? e.message : 'Generation failed'}`);
+                      }
+                    }}
+                    style={{ flex: 1, padding: '6px 10px', background: 'var(--sion-accent)', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', opacity: !workspacePath ? 0.5 : 1 }}
+                  >
+                    {shadowStatus === 'generating' ? '⏳ Generating...' : '🧠 Generate Shadow'}
+                  </button>
+                </div>
+
+                {/* Status Message */}
+                {shadowMessage && (
+                  <div style={{ padding: '6px 12px', fontSize: '11px', color: shadowStatus === 'error' ? '#f87171' : shadowStatus === 'done' ? '#4ade80' : 'var(--sion-text-secondary)' }}>
+                    {shadowMessage}
+                  </div>
+                )}
+
+                {/* Hot Spots Quick View */}
+                <div style={{ padding: '4px 12px' }}>
+                  <button
+                    disabled={!workspacePath}
+                    onClick={async () => {
+                      try {
+                        const res = await commands.shadowGetHotspots(workspacePath);
+                        if (res.status === 'error') throw new Error(res.error);
+                        const report = JSON.parse(res.data);
+                        setShadowMessage(`🔥 ${report.spots.length} hot spots (${report.total_commits_30d} commits in 30d). Top: ${report.spots[0]?.file || 'none'} (${report.spots[0]?.edits_30d || 0}x)`);
+                      } catch (e: unknown) {
+                        setShadowMessage(`❌ ${e instanceof Error ? e.message : 'Failed'}`);
+                      }
+                    }}
+                    style={{ width: '100%', padding: '5px 10px', background: 'var(--sion-surface)', color: 'var(--sion-text-primary)', border: '1px solid var(--sion-border)', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', opacity: !workspacePath ? 0.5 : 1 }}
+                  >
+                    🔥 View Hot Spots
+                  </button>
+                </div>
+
+                {/* Shadow Doc Status */}
+                <div style={{ padding: '4px 12px' }}>
+                  <button
+                    disabled={!workspacePath}
+                    onClick={async () => {
+                      try {
+                        const res = await commands.shadowStatus(workspacePath);
+                        if (res.status === 'error') throw new Error(res.error);
+                        setShadowDocs(JSON.parse(res.data));
+                      } catch (e: unknown) {
+                        setShadowMessage(`❌ ${e instanceof Error ? e.message : 'Failed'}`);
+                      }
+                    }}
+                    style={{ width: '100%', padding: '5px 10px', background: 'var(--sion-surface)', color: 'var(--sion-text-primary)', border: '1px solid var(--sion-border)', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', opacity: !workspacePath ? 0.5 : 1, marginBottom: '8px' }}
+                  >
+                    📄 Check Status
+                  </button>
+                  {shadowDocs.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      {shadowDocs.map((d, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', background: 'var(--sion-surface)', borderRadius: '4px', fontSize: '11px' }}>
+                          <span style={{ color: d.exists ? '#4ade80' : '#f87171' }}>
+                            {d.exists ? '🟢' : '🔴'} {d.doc}
+                          </span>
+                          {d.modified && (
+                            <span style={{ color: 'var(--sion-text-secondary)', fontSize: '10px' }}>{d.modified}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </>
             )}

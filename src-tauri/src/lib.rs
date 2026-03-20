@@ -278,12 +278,20 @@ fn sandbox_history(state: State<AppState>) -> Vec<SandboxResultType> {
 #[specta::specta]
 async fn execute_orchestration_loop(
     intent: String,
-    _workspace_root: String,
+    workspace_root: String,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let sam_logic = state.sam_logic.clone();
 
-    // Step 1: Triage with Gemini Flash
+    // Phase 9: Inject shadow context from workspace into the intent
+    let shadow_context = orchestrator::shadow_context::build_context_for_prompt(&workspace_root, &intent);
+    let enriched_intent = if shadow_context.is_empty() {
+        intent.clone()
+    } else {
+        format!("{}\n\nUser Request: {}", shadow_context, intent)
+    };
+
+    // Step 1: Triage with Gemini Flash (uses raw intent for clean classification)
     let triage = match router::call_gemini_flash_triage(&intent, &sam_logic).await {
         Ok(t) => t,
         Err(e) => {
@@ -310,7 +318,7 @@ async fn execute_orchestration_loop(
         println!("🎯 Action Track: {} → sandbox execution", triage.category);
 
         // Step 3: Get ActionEnvelope from LLM (JSON mode)
-        let envelope = match router::dispatch_action(&intent, &triage.route_to, &sam_logic).await {
+        let envelope = match router::dispatch_action(&enriched_intent, &triage.route_to, &sam_logic).await {
             Ok(env) => env,
             Err(e) => {
                 let result = OrchestrationResult {
@@ -381,7 +389,7 @@ async fn execute_orchestration_loop(
         // ── KNOWLEDGE TRACK ──
         println!("📚 Knowledge Track: {} → text response", triage.category);
 
-        let dispatch = router::dispatch_smart(&intent, &sam_logic).await;
+        let dispatch = router::dispatch_smart(&enriched_intent, &sam_logic).await;
         let result = OrchestrationResult {
             track: "knowledge".into(),
             triage: Some(triage),

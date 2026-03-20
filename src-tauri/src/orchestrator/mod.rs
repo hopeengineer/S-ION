@@ -3,6 +3,7 @@ pub mod heartbeat;
 pub mod router;
 pub mod sandbox;
 pub mod sentinel;
+pub mod shadow_context;
 pub mod shadow_gen;
 pub mod shadow_scanner;
 pub mod shadow_temporal;
