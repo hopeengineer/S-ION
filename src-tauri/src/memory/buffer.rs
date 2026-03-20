@@ -1,4 +1,4 @@
-use rusqlite::{Connection as SqliteConn, params};
+use rusqlite::{params, Connection as SqliteConn};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -25,10 +25,14 @@ pub struct BufferedMemory {
 }
 
 impl DreamBuffer {
+    /// Get the path to the dream buffer database.
+    pub fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+
     /// Initialize the dreaming buffer at the OS-native data directory.
     pub fn init() -> Result<Self, String> {
-        let data_dir = dirs::data_local_dir()
-            .ok_or("Cannot determine OS data directory")?;
+        let data_dir = dirs::data_local_dir().ok_or("Cannot determine OS data directory")?;
         let sion_dir = data_dir.join("com.s-ion.dev");
         std::fs::create_dir_all(&sion_dir)
             .map_err(|e| format!("Failed to create S-ION data dir: {}", e))?;
@@ -53,7 +57,8 @@ impl DreamBuffer {
                 promoted INTEGER NOT NULL DEFAULT 0
             )",
             [],
-        ).map_err(|e| format!("Table creation failed: {}", e))?;
+        )
+        .map_err(|e| format!("Table creation failed: {}", e))?;
 
         println!("💤 Dream Buffer initialized: {}", db_path.display());
 
@@ -64,7 +69,13 @@ impl DreamBuffer {
     }
 
     /// Save a memory to the buffer (while ONNX model is downloading).
-    pub fn save(&self, content: &str, category: &str, is_global: bool, metadata: &str) -> Result<i64, String> {
+    pub fn save(
+        &self,
+        content: &str,
+        category: &str,
+        is_global: bool,
+        metadata: &str,
+    ) -> Result<i64, String> {
         let conn = self.conn.lock().map_err(|e| format!("Lock error: {}", e))?;
         let now = chrono::Utc::now().timestamp();
 
@@ -74,7 +85,12 @@ impl DreamBuffer {
         ).map_err(|e| format!("Insert failed: {}", e))?;
 
         let id = conn.last_insert_rowid();
-        println!("💤 Buffered dream #{}: [{}] {}", id, category, &content[..content.len().min(50)]);
+        println!(
+            "💤 Buffered dream #{}: [{}] {}",
+            id,
+            category,
+            &content[..content.len().min(50)]
+        );
         Ok(id)
     }
 
@@ -85,16 +101,18 @@ impl DreamBuffer {
             "SELECT id, content, category, is_global, created_at, metadata FROM dreams WHERE promoted = 0 ORDER BY id"
         ).map_err(|e| format!("Prepare failed: {}", e))?;
 
-        let rows = stmt.query_map([], |row| {
-            Ok(BufferedMemory {
-                id: row.get(0)?,
-                content: row.get(1)?,
-                category: row.get(2)?,
-                is_global: row.get::<_, i32>(3)? != 0,
-                created_at: row.get(4)?,
-                metadata: row.get(5)?,
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(BufferedMemory {
+                    id: row.get(0)?,
+                    content: row.get(1)?,
+                    category: row.get(2)?,
+                    is_global: row.get::<_, i32>(3)? != 0,
+                    created_at: row.get(4)?,
+                    metadata: row.get(5)?,
+                })
             })
-        }).map_err(|e| format!("Query failed: {}", e))?;
+            .map_err(|e| format!("Query failed: {}", e))?;
 
         let mut result = Vec::new();
         for row in rows {
@@ -118,9 +136,11 @@ impl DreamBuffer {
     /// Count unpromoted dreams (for status display).
     pub fn unpromoted_count(&self) -> Result<u32, String> {
         let conn = self.conn.lock().map_err(|e| format!("Lock error: {}", e))?;
-        let count: i32 = conn.query_row(
-            "SELECT COUNT(*) FROM dreams WHERE promoted = 0", [], |r| r.get(0)
-        ).map_err(|e| format!("Count failed: {}", e))?;
+        let count: i32 = conn
+            .query_row("SELECT COUNT(*) FROM dreams WHERE promoted = 0", [], |r| {
+                r.get(0)
+            })
+            .map_err(|e| format!("Count failed: {}", e))?;
         Ok(count as u32)
     }
 
@@ -128,10 +148,12 @@ impl DreamBuffer {
     pub fn cleanup_promoted(&self) -> Result<u32, String> {
         let conn = self.conn.lock().map_err(|e| format!("Lock error: {}", e))?;
         let cutoff = chrono::Utc::now().timestamp() - (7 * 86400);
-        let deleted = conn.execute(
-            "DELETE FROM dreams WHERE promoted = 1 AND created_at < ?1",
-            params![cutoff],
-        ).map_err(|e| format!("Cleanup failed: {}", e))?;
+        let deleted = conn
+            .execute(
+                "DELETE FROM dreams WHERE promoted = 1 AND created_at < ?1",
+                params![cutoff],
+            )
+            .map_err(|e| format!("Cleanup failed: {}", e))?;
         Ok(deleted as u32)
     }
 }

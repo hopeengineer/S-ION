@@ -8,17 +8,21 @@ use std::sync::Mutex;
 /// The selected hardware execution provider.
 #[derive(Debug, Clone)]
 pub enum ExecutionProvider {
-    CoreML,     // macOS Apple Neural Engine
-    DirectML,   // Windows GPU/NPU
-    CUDA,       // Linux NVIDIA
-    CPU,        // Universal fallback
+    CoreML,                       // macOS Apple Neural Engine
+    #[cfg(target_os = "windows")]
+    DirectML,                     // Windows GPU/NPU
+    #[cfg(target_os = "linux")]
+    CUDA,                         // Linux NVIDIA
+    CPU,                          // Universal fallback
 }
 
 impl std::fmt::Display for ExecutionProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::CoreML => write!(f, "Apple Neural Engine (CoreML)"),
+            #[cfg(target_os = "windows")]
             Self::DirectML => write!(f, "DirectML (GPU/NPU)"),
+            #[cfg(target_os = "linux")]
             Self::CUDA => write!(f, "CUDA (NVIDIA)"),
             Self::CPU => write!(f, "CPU"),
         }
@@ -79,10 +83,16 @@ impl Embedder {
     pub async fn init_local(&self, model_path: &Path, tokenizer_path: &Path) -> Result<(), String> {
         let tok = tokenizers::Tokenizer::from_file(tokenizer_path)
             .map_err(|e| format!("Tokenizer load failed: {}", e))?;
-        *self.tokenizer.lock().map_err(|e| format!("Lock error: {}", e))? = Some(tok);
+        *self
+            .tokenizer
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))? = Some(tok);
 
         let session = self.build_session(model_path)?;
-        *self.session.lock().map_err(|e| format!("Lock error: {}", e))? = Some(session);
+        *self
+            .session
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))? = Some(session);
 
         println!("⚡ Local ONNX embedder initialized via {}", self.provider);
         Ok(())
@@ -95,25 +105,34 @@ impl Embedder {
         // Register the platform-specific execution provider
         #[cfg(target_os = "macos")]
         let mut builder = if matches!(self.provider, ExecutionProvider::CoreML) {
-            builder.with_execution_providers([
-                ort::execution_providers::CoreMLExecutionProvider::default().build()
-            ]).map_err(|e| format!("CoreML EP error: {}", e))?
-        } else { builder };
+            builder
+                .with_execution_providers([
+                    ort::execution_providers::CoreMLExecutionProvider::default().build(),
+                ])
+                .map_err(|e| format!("CoreML EP error: {}", e))?
+        } else {
+            builder
+        };
 
         #[cfg(target_os = "windows")]
         let mut builder = if matches!(self.provider, ExecutionProvider::DirectML) {
-            builder.with_execution_providers([
-                ort::execution_providers::DirectMLExecutionProvider::default().build()
-            ]).map_err(|e| format!("DirectML EP error: {}", e))?
-        } else { builder };
+            builder
+                .with_execution_providers([
+                    ort::execution_providers::DirectMLExecutionProvider::default().build(),
+                ])
+                .map_err(|e| format!("DirectML EP error: {}", e))?
+        } else {
+            builder
+        };
 
         #[cfg(not(any(target_os = "macos", target_os = "windows")))]
         let mut builder = builder;
 
         // ort rc12: commit_from_file doesn't exist, use commit_from_memory
-        let model_bytes = std::fs::read(model_path)
-            .map_err(|e| format!("Failed to read model file: {}", e))?;
-        builder.commit_from_memory(&model_bytes)
+        let model_bytes =
+            std::fs::read(model_path).map_err(|e| format!("Failed to read model file: {}", e))?;
+        builder
+            .commit_from_memory(&model_bytes)
             .map_err(|e| format!("Model load error: {}", e))
     }
 
@@ -136,17 +155,28 @@ impl Embedder {
 
     /// Local ONNX embedding via BGE-M3.
     fn embed_local(&self, text: &str) -> Result<Vec<f32>, String> {
-        let tok_guard = self.tokenizer.lock().map_err(|e| format!("Tok lock: {}", e))?;
+        let tok_guard = self
+            .tokenizer
+            .lock()
+            .map_err(|e| format!("Tok lock: {}", e))?;
         let tokenizer = tok_guard.as_ref().ok_or("Tokenizer not initialized")?;
-        let mut sess_guard = self.session.lock().map_err(|e| format!("Sess lock: {}", e))?;
+        let mut sess_guard = self
+            .session
+            .lock()
+            .map_err(|e| format!("Sess lock: {}", e))?;
         let session = sess_guard.as_mut().ok_or("ONNX session not initialized")?;
 
         // Tokenize
-        let encoding = tokenizer.encode(text, true)
+        let encoding = tokenizer
+            .encode(text, true)
             .map_err(|e| format!("Tokenize error: {}", e))?;
 
         let input_ids: Vec<i64> = encoding.get_ids().iter().map(|&id| id as i64).collect();
-        let attention_mask: Vec<i64> = encoding.get_attention_mask().iter().map(|&m| m as i64).collect();
+        let attention_mask: Vec<i64> = encoding
+            .get_attention_mask()
+            .iter()
+            .map(|&m| m as i64)
+            .collect();
         let token_type_ids: Vec<i64> = encoding.get_type_ids().iter().map(|&t| t as i64).collect();
         let seq_len = input_ids.len();
 
@@ -165,18 +195,24 @@ impl Embedder {
             "token_type_ids" => types_val,
         ];
 
-        let outputs = session.run(inputs)
+        let outputs = session
+            .run(inputs)
             .map_err(|e| format!("Inference error: {}", e))?;
 
         // Extract the [CLS] token embedding
         let output = &outputs[0];
         // ort rc12: try_extract_tensor returns (&Shape, &[f32]) tuple
-        let (shape, data) = output.try_extract_tensor::<f32>()
+        let (shape, data) = output
+            .try_extract_tensor::<f32>()
             .map_err(|e| format!("Tensor extract error: {}", e))?;
 
         // Shape is [1, seq_len, hidden_dim]. Get first hidden_dim values for [CLS]
         let dims: Vec<usize> = shape.iter().map(|&d| d as usize).collect();
-        let hidden_dim = if dims.len() == 3 { dims[2] } else { *dims.last().unwrap_or(&1024) };
+        let hidden_dim = if dims.len() == 3 {
+            dims[2]
+        } else {
+            *dims.last().unwrap_or(&1024)
+        };
         let embedding: Vec<f32> = data[..hidden_dim].to_vec();
 
         // L2 normalize
@@ -203,7 +239,11 @@ impl Embedder {
         });
 
         let client = reqwest::Client::new();
-        let resp = client.post(&url).json(&body).send().await
+        let resp = client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
             .map_err(|e| format!("Gemini embed request failed: {}", e))?;
 
         if !resp.status().is_success() {
@@ -212,13 +252,17 @@ impl Embedder {
             return Err(format!("Gemini embed error {}: {}", status, text));
         }
 
-        let result: serde_json::Value = resp.json().await
+        let result: serde_json::Value = resp
+            .json()
+            .await
             .map_err(|e| format!("JSON parse error: {}", e))?;
 
-        let values = result["embedding"]["values"].as_array()
+        let values = result["embedding"]["values"]
+            .as_array()
             .ok_or("No embedding values in Gemini response")?;
 
-        let embedding: Vec<f32> = values.iter()
+        let embedding: Vec<f32> = values
+            .iter()
             .filter_map(|v| v.as_f64().map(|f| f as f32))
             .collect();
 

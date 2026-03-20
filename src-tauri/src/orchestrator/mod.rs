@@ -224,19 +224,19 @@ pub struct PipelineResult {
 // ──────────────────────────────────────────────────
 
 impl SamLogic {
-    pub fn route_heuristic(&self, intent: &str) -> String {
+    pub fn route_heuristic(&self, intent: &str) -> &str {
         let intent_lower = intent.to_lowercase();
 
-        let agents = [
-            &self.swarm.commander,
-            &self.swarm.audit_hook,
-            &self.swarm.analyst,
-            &self.swarm.visionary,
-            &self.swarm.builder,
-            &self.swarm.scout,
+        let agents: [(&SwarmAgent, &str); 6] = [
+            (&self.swarm.commander, "commander"),
+            (&self.swarm.audit_hook, "audit_hook"),
+            (&self.swarm.analyst, "analyst"),
+            (&self.swarm.visionary, "visionary"),
+            (&self.swarm.builder, "builder"),
+            (&self.swarm.scout, "scout"),
         ];
 
-        for agent in &agents {
+        for (agent, key) in &agents {
             for trigger in &agent.triggers {
                 let keywords: Vec<&str> = trigger.split('_').collect();
                 let match_count = keywords
@@ -245,22 +245,12 @@ impl SamLogic {
                     .count();
 
                 if match_count > 0 && match_count >= (keywords.len() + 1) / 2 {
-                    return serde_json::json!({
-                        "stage": "fallback",
-                        "model": agent.model,
-                        "designation": agent.designation,
-                    })
-                    .to_string();
+                    return key;
                 }
             }
         }
 
-        serde_json::json!({
-            "stage": "fallback",
-            "model": self.swarm.analyst.model,
-            "designation": self.swarm.analyst.designation,
-        })
-        .to_string()
+        "analyst" // Default fallback
     }
 }
 

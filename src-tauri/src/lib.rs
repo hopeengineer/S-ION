@@ -301,11 +301,12 @@ async fn execute_orchestration_loop(
     let triage = match router::call_gemini_flash_triage(&intent, &sam_logic).await {
         Ok(t) => t,
         Err(e) => {
-            println!("⚠️  Triage failed, defaulting to knowledge track: {}", e);
+            let fallback_route = sam_logic.route_heuristic(&intent);
+            println!("⚠️  Triage failed, heuristic fallback → {}: {}", fallback_route, e);
             router::TriageResult {
                 category: "simple_qa".into(),
-                route_to: "analyst".into(),
-                reasoning: format!("Triage fallback: {}", e),
+                route_to: fallback_route.to_string(),
+                reasoning: format!("Triage fallback (heuristic): {}", e),
                 confidence: 0.0,
             }
         }
@@ -431,9 +432,10 @@ async fn execute_orchestration_loop(
                         };
                         if let Ok(vec) = vector {
                             let cat = crate::memory::store::MemoryCategory::from_str(&item.category);
+                            let is_global = cat.default_global(); // Category determines scope, not LLM
                             let mem_guard = mem_handle.lock().await;
                             if let Some(ref mgr) = *mem_guard {
-                                let _ = mgr.store(&item.content, cat, item.is_global, vec, "{}").await;
+                                let _ = mgr.store(&item.content, cat, is_global, vec, "{}").await;
                             } else {
                                 // Buffer for later
                                 if let Ok(guard) = buf_handle.lock() {
@@ -1266,6 +1268,7 @@ pub fn run() {
                         let mem_guard = dream_mem.lock().await;
                         if let Some(ref mgr) = *mem_guard {
                             for item in &unpromoted {
+                                let age_mins = (chrono::Utc::now().timestamp() - item.created_at) / 60;
                                 let vector = {
                                     let emb = dream_emb.lock().await;
                                     emb.embed_text(&item.content).await
@@ -1278,6 +1281,7 @@ pub fn run() {
                                                 let _ = buf.mark_promoted(item.id);
                                             }
                                         }
+                                        println!("   💤 Promoted dream #{} (aged {}min): [{}] {}", item.id, age_mins, item.category, &item.content[..item.content.len().min(50)]);
                                     }
                                 }
                             }
