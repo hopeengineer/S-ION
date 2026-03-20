@@ -47,3 +47,19 @@ src/
   SidecarMonitor.tsx ← VM telemetry panel
   bindings.ts        ← AUTO-GENERATED (do not edit)
 ```
+
+## ⚠️ Shadow Doc Maintenance (MANDATORY)
+
+After **every structural change**, update the relevant `.sion/` doc:
+
+| What Changed | Update This |
+|-------------|-------------|
+| Added/removed IPC command | `ARCHITECTURE.md` |
+| Added/removed/changed agent | `ARCHITECTURE.md` |
+| Modified security logic or egress | `SECURITY_MODEL.md` |
+| Added React/Rust state fields | `STATE_MACHINE.md` |
+| Changed API provider or error handling | `RUNTIME.md` |
+| Made a significant design decision | `DECISIONS.md` |
+| Hit a non-obvious bug or gotcha | `GOTCHAS.md` |
+
+**Failure to maintain these docs defeats the entire 4D Contextual Shadow system and will lead to repeated mistakes.**
