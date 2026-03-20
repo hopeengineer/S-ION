@@ -686,7 +686,14 @@ async fn shadow_generate(
     std::fs::write(shadow_dir.join("HOTSPOTS.json"), &hotspots_json)
         .map_err(|e| format!("Failed to write HOTSPOTS.json: {}", e))?;
 
-    // Step 3: Generate shadow docs via LLM
+    // Step 3: Build symbol atlas (zero-cost, no LLM)
+    let atlas = orchestrator::shadow_atlas::build_atlas(root)?;
+    let atlas_json = serde_json::to_string_pretty(&atlas)
+        .map_err(|e| format!("Failed to serialize atlas: {}", e))?;
+    std::fs::write(shadow_dir.join("ATLAS.json"), &atlas_json)
+        .map_err(|e| format!("Failed to write ATLAS.json: {}", e))?;
+
+    // Step 4: Generate shadow docs via LLM
     let sam_logic = state.sam_logic.clone();
     let generated = orchestrator::shadow_gen::generate_shadow_docs(&scan, &hotspots, &sam_logic).await?;
 
@@ -708,7 +715,18 @@ async fn shadow_generate(
             "frameworks": scan.stack.frameworks,
         },
         "hotspots_count": hotspots.spots.len(),
+        "atlas_symbols": atlas.total_symbols,
+        "atlas_files": atlas.total_files,
     }).to_string())
+}
+
+/// Get the symbol atlas for a workspace.
+#[tauri::command]
+#[specta::specta]
+fn shadow_get_atlas(path: String) -> Result<String, String> {
+    let root = std::path::Path::new(&path);
+    let atlas = orchestrator::shadow_atlas::build_atlas(root)?;
+    serde_json::to_string(&atlas).map_err(|e| format!("Serialization error: {}", e))
 }
 
 // ──────────────────────────────────────────────────
@@ -844,6 +862,7 @@ pub fn run() {
             shadow_get_hotspots,
             shadow_status,
             shadow_generate,
+            shadow_get_atlas,
         ]);
 
     // Export TypeScript bindings on debug builds
