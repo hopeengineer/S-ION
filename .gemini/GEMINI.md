@@ -5,7 +5,10 @@
 1. **Read `.sion/ARCHITECTURE.md`** — Understand the swarm paradigm and two-track pipeline
 2. **Read `.sion/SECURITY_MODEL.md`** — The 4 defense layers are constitutional law. **DO NOT bypass the egress filter or remove audit hook patterns.**
 3. **Read `.sion/STATE_MACHINE.md`** — Understand React↔Rust state mapping before touching any state
-4. **Read `src/bindings.ts`** — These are the exact IPC contracts. Every frontend `invoke()` call must match a typed wrapper here.
+4. **Read `.sion/RUNTIME.md`** — Actual API call chains, provider auth patterns, error propagation
+5. **Read `.sion/DECISIONS.md`** — **WHY** things are built this way. Read before questioning any design.
+6. **Read `.sion/GOTCHAS.md`** — Hard-won lessons. **READ THIS BEFORE TOUCHING SPECTA, BINDINGS, OR API CALLS.**
+7. **Read `src/bindings.ts`** — These are the exact IPC contracts. Every frontend `invoke()` call must match a typed wrapper here.
 
 ## IPC Contract Rules
 
