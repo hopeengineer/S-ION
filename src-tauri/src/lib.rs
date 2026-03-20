@@ -897,16 +897,28 @@ async fn memory_delete(
 #[tauri::command]
 #[specta::specta]
 async fn memory_provision_status(state: State<'_, AppState>) -> Result<String, String> {
+    let mut buffer_path_str = String::new();
+    if let Ok(g) = state.dream_buffer.lock() {
+        if let Some(ref b) = *g {
+            buffer_path_str = b.path().display().to_string();
+        }
+    }
+
     let prov = state.provisioner.lock().await;
     if let Some(ref p) = *prov {
         let status = p.status_receiver().borrow().clone();
-        serde_json::to_string(&status).map_err(|e| format!("Serialize: {}", e))
+        let mut json = serde_json::to_value(&status).map_err(|e| format!("Serialize: {}", e))?;
+        if !buffer_path_str.is_empty() {
+            json["buffer_path"] = serde_json::Value::String(buffer_path_str);
+        }
+        serde_json::to_string(&json).map_err(|e| format!("Serialize: {}", e))
     } else {
         Ok(serde_json::json!({
             "ready": false,
             "downloading": false,
             "model_name": "BGE-M3-INT8",
-            "error": "Provisioner not initialized"
+            "error": "Provisioner not initialized",
+            "buffer_path": buffer_path_str
         }).to_string())
     }
 }
