@@ -3,6 +3,24 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 
+/// Extract a JSON field value from potentially truncated JSON.
+/// Looks for `"field":"value"` or `"field": "value"` pattern.
+fn extract_field(content: &str, field: &str) -> Option<String> {
+    let pattern = format!("\"{}\"", field);
+    if let Some(pos) = content.find(&pattern) {
+        let after = &content[pos + pattern.len()..];
+        // Skip `: ` or `:`
+        let after = after.trim_start().strip_prefix(':')?.trim_start();
+        if after.starts_with('"') {
+            let value_start = 1;
+            if let Some(end) = after[value_start..].find('"') {
+                return Some(after[value_start..value_start + end].to_string());
+            }
+        }
+    }
+    None
+}
+
 // ──────────────────────────────────────────────────
 // Runtime Mode
 // ──────────────────────────────────────────────────
@@ -120,7 +138,8 @@ pub async fn call_gemini_flash_triage(
             ],
             "generationConfig": {
                 "temperature": 0.05,
-                "maxOutputTokens": 512
+                "maxOutputTokens": 512,
+                "responseMimeType": "application/json"
             }
         }))
         .send()
@@ -140,6 +159,13 @@ pub async fn call_gemini_flash_triage(
     let resp_json: serde_json::Value =
         serde_json::from_str(&body).map_err(|e| format!("Invalid JSON from Gemini: {}", e))?;
 
+    // Diagnostic: log finish reason
+    let finish_reason = resp_json["candidates"][0]["finishReason"]
+        .as_str()
+        .unwrap_or("unknown");
+    println!("🔎 Gemini triage finishReason: {}", finish_reason);
+    println!("🔎 Gemini full body: {}", &body[..body.len().min(500)]);
+
     let content = resp_json["candidates"][0]["content"]["parts"][0]["text"]
         .as_str()
         .ok_or_else(|| {
@@ -149,13 +175,37 @@ pub async fn call_gemini_flash_triage(
             )
         })?;
 
+    println!("🔎 Gemini raw content: {}", content);
+
     // Use extract_json to handle any remaining preamble
     let json_str = extract_json(content);
 
-    println!("🔎 Gemini raw triage: {}", json_str);
+    println!("🔎 Gemini extracted JSON: {}", json_str);
 
-    let triage: TriageResult = serde_json::from_str(&json_str)
-        .map_err(|e| format!("Failed to parse triage result: {} — raw: {}", e, content))?;
+    // Try to parse, if it fails and looks like truncated triage, try to recover
+    let triage: TriageResult = match serde_json::from_str(&json_str) {
+        Ok(t) => t,
+        Err(e) => {
+            // Attempt recovery: if we can detect category from the truncated JSON
+            println!("⚠️  Triage parse failed: {} — attempting recovery from: {}", e, content);
+
+            // Try to extract category and route_to from partial JSON
+            let cat = extract_field(content, "category");
+            let route = extract_field(content, "route_to");
+
+            if let (Some(category), Some(route_to)) = (cat, route) {
+                println!("🔧 Recovered triage: {} → {}", category, route_to);
+                TriageResult {
+                    category,
+                    route_to,
+                    reasoning: format!("Recovered from truncated triage: {}", content),
+                    confidence: 0.7,
+                }
+            } else {
+                return Err(format!("Failed to parse triage result: {} — raw: {}", e, content));
+            }
+        }
+    };
 
     println!(
         "⚡ Triage: {} → {} (confidence: {:.0}%)",
@@ -570,30 +620,22 @@ Rules:
 - Write files using echo/cat/heredoc syntax inside bash_commands.
 - Keep commands simple and deterministic."#;
 
-/// Calls an LLM in Action mode, forcing JSON output matching ActionEnvelope.
+/// Calls the Commander (Kimi K2.5) in Action mode, forcing JSON output matching ActionEnvelope.
+/// Always uses the Commander regardless of which agent triage selected, since the Commander
+/// is the only agent configured for structured ActionEnvelope generation.
 pub async fn dispatch_action(
     intent: &str,
-    agent_key: &str,
+    _agent_key: &str,
     sam_logic: &SamLogic,
 ) -> Result<ActionEnvelope, String> {
-    // Resolve which model to use
-    let (api_key_env, base_url, model) = match agent_key {
-        "commander" => (
-            sam_logic.swarm.commander.api_env_key.clone(),
-            sam_logic.swarm.commander.api_base_url.clone(),
-            sam_logic.swarm.commander.model.clone(),
-        ),
-        "builder" => (
-            sam_logic.swarm.builder.api_env_key.clone(),
-            sam_logic.swarm.builder.api_base_url.clone(),
-            sam_logic.swarm.builder.model.clone(),
-        ),
-        _ => (
-            sam_logic.swarm.analyst.api_env_key.clone(),
-            sam_logic.swarm.analyst.api_base_url.clone(),
-            sam_logic.swarm.analyst.model.clone(),
-        ),
-    };
+    // Always use Commander for ActionEnvelope generation
+    let (api_key_env, base_url, model) = (
+        sam_logic.swarm.commander.api_env_key.clone(),
+        sam_logic.swarm.commander.api_base_url.clone(),
+        sam_logic.swarm.commander.model.clone(),
+    );
+
+    println!("📦 dispatch_action: using Commander ({}) for ActionEnvelope", model);
 
     let api_key = env::var(&api_key_env)
         .map_err(|_| format!("Missing env: {}", api_key_env))?;
@@ -613,7 +655,7 @@ pub async fn dispatch_action(
                 { "role": "system", "content": ACTION_SYSTEM_PROMPT },
                 { "role": "user", "content": intent }
             ],
-            "temperature": 0.1,
+            "temperature": 1.0,
             "max_tokens": 4096,
             "response_format": { "type": "json_object" }
         }))

@@ -53,11 +53,11 @@ ux_logic:
 # ──────────────────────────────────────
 swarm:
   commander:
-    model: "kimi-k2-0201"
+    model: "kimi-k2.5"
     designation: "The Commander"
     role: "Primary orchestrator. Decomposes user intents into parallel execution plans with tool calls and sub-agent assignments."
     api_env_key: "KIMI_API_KEY"
-    api_base_url: "https://api.moonshot.cn/v1"
+    api_base_url: "https://api.moonshot.ai/v1"
     triggers:
       - "multi_step_orchestration"
       - "parallel_task_planning"
@@ -66,11 +66,11 @@ swarm:
       - "ui_build"
 
   audit_hook:
-    model: "claude-4-6-opus-20260205"
+    model: "kimi-k2.5"
     designation: "The Audit Hook"
     role: "Safety guardian. Verifies execution plans against SAM_LOGIC.yaml before Firecracker MicroVMs boot. Has absolute veto power."
-    api_env_key: "ANTHROPIC_API_KEY"
-    api_base_url: "https://api.anthropic.com/v1"
+    api_env_key: "KIMI_API_KEY"
+    api_base_url: "https://api.moonshot.ai/v1"
     triggers:
       - "system_architecture_change"
       - "natural_language_to_shell"
@@ -103,11 +103,11 @@ swarm:
       - "long_document_analysis"
 
   builder:
-    model: "claude-4-6-sonnet-20260217"
+    model: "kimi-k2.5"
     designation: "The Builder"
     role: "Code architect. Complex refactoring, code generation, and build artifact creation."
-    api_env_key: "ANTHROPIC_API_KEY"
-    api_base_url: "https://api.anthropic.com/v1"
+    api_env_key: "KIMI_API_KEY"
+    api_base_url: "https://api.moonshot.ai/v1"
     triggers:
       - "code_generation"
       - "refactoring"
@@ -151,7 +151,7 @@ swarm:
 # Fast (~200ms) intent classification before dispatch
 # ──────────────────────────────────────
 smart_mode:
-  triage_model: "gemini-3-flash-preview"
+  triage_model: "gemini-3.1-flash-lite-preview"
   triage_api_env_key: "GEMINI_API_KEY"
   triage_api_base_url: "https://generativelanguage.googleapis.com/v1beta"
   categories:

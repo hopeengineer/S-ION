@@ -317,12 +317,12 @@ Respond ONLY with valid JSON:
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
-            "model": "kimi-k2-0201",
+            "model": "kimi-k2.5",
             "messages": [
                 { "role": "system", "content": system_prompt },
                 { "role": "user", "content": intent }
             ],
-            "temperature": 0.3,
+            "temperature": 1.0,
             "response_format": { "type": "json_object" }
         }))
         .send()
@@ -493,11 +493,19 @@ pub fn extract_json(content: &str) -> String {
     }
     if let Some(start) = content.find('{') {
         let mut depth = 0;
+        let mut in_string = false;
+        let mut escape_next = false;
         let chars: Vec<char> = content[start..].chars().collect();
         for (i, ch) in chars.iter().enumerate() {
+            if escape_next {
+                escape_next = false;
+                continue;
+            }
             match ch {
-                '{' => depth += 1,
-                '}' => {
+                '\\' if in_string => escape_next = true,
+                '"' => in_string = !in_string,
+                '{' if !in_string => depth += 1,
+                '}' if !in_string => {
                     depth -= 1;
                     if depth == 0 {
                         return content[start..start + i + 1].to_string();

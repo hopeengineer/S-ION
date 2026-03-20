@@ -1,6 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import "./App.css";
 import SidecarMonitor from "./SidecarMonitor";
 
@@ -160,6 +164,7 @@ function App() {
   const [mode, setMode] = useState<"smart" | "expert">("smart");
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(
     () => (localStorage.getItem("sion-theme") as "light" | "dark") || "light"
   );
@@ -314,8 +319,16 @@ function App() {
     }
   }, [intent, mode, selectedCategory]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSubmit();
+  const wrappedSubmit = useCallback(() => {
+    setHasSubmitted(true);
+    handleSubmit();
+  }, [handleSubmit]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      wrappedSubmit();
+    }
   };
 
   const toggleMode = async () => {
@@ -377,65 +390,72 @@ function App() {
 
       <section className="content-wrapper">
         {/* ── Main Content ── */}
-        <section className="main-content">
-          <article className="hero">
-            <img className="hero-icon" src="/sion-icon.svg" alt="S-ION" />
-            <h1>What can <span>S-ION</span> do for you?</h1>
-            <p>
-              {mode === "smart"
-                ? "Smart Mode: S-ION auto-routes to the best model for your task."
-                : "Expert Mode: You control which model handles each task."}
-            </p>
+        <section className={`main-content ${hasSubmitted ? "chat-mode" : ""}`}>
+          
+          {/* ── Hero (Initial State Only) ── */}
+          {!hasSubmitted && (
+            <article className="hero">
+              <img className="hero-icon" src="/sion-icon.svg" alt="S-ION" />
+              <h1>What can <span>S-ION</span> do for you?</h1>
+              <p>
+                {mode === "smart"
+                  ? "Smart Mode: S-ION auto-routes to the best model for your task."
+                  : "Expert Mode: You control which model handles each task."}
+              </p>
 
-            {/* Expert Mode: Task Category Selector */}
-            {mode === "expert" && (
-              <nav className="category-selector">
-                {TASK_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.key}
-                    className={`category-chip ${selectedCategory === cat.key ? "active" : ""}`}
-                    onClick={() => setSelectedCategory(cat.key)}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
+              {/* Action Bar (inside hero before submit) */}
+              <div className="action-bar">
+                <textarea
+                  className="action-bar-input"
+                  placeholder={
+                    mode === "smart"
+                      ? "Ask S-ION anything... (Shift+Enter for new line)"
+                      : `e.g. ${selectedCategory.replace(/_/g, " ")} task...`
+                  }
+                  value={intent}
+                  onChange={(e) => setIntent(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={3}
+                  autoFocus
+                />
+                <button
+                  className="action-bar-submit"
+                  onClick={wrappedSubmit}
+                  disabled={loading}
+                  aria-label="Submit"
+                >
+                  {loading ? <span className="spinner" /> : (
+                    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                  )}
+                </button>
+              </div>
+
+              {/* Shortcut Chips */}
+              <nav className="shortcuts">
+                <span className="shortcut-chip"><kbd>⌘</kbd><kbd>K</kbd> Action Bar</span>
+                <span className="shortcut-chip"><kbd>⌘</kbd><kbd>E</kbd> Expert Mode</span>
+                <span className="shortcut-chip"><kbd>⌘</kbd><kbd>.</kbd> Snap-Back</span>
               </nav>
-            )}
+            </article>
+          )}
 
-            {/* ── Action Bar ── */}
-            <div className="action-bar">
-              <input
-                className="action-bar-input"
-                type="text"
-                placeholder={
-                  mode === "smart"
-                    ? "e.g. Summarize this article and find similar research..."
-                    : `e.g. ${selectedCategory.replace(/_/g, " ")} task...`
-                }
-                value={intent}
-                onChange={(e) => setIntent(e.target.value)}
-                onKeyDown={handleKeyDown}
-                autoFocus
-              />
-              <button
-                className="action-bar-submit"
-                onClick={handleSubmit}
-                disabled={loading}
-                aria-label="Submit"
-              >
-                {loading ? <span className="spinner" /> : (
-                  <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                )}
-              </button>
-            </div>
-
-            {/* Shortcut Chips */}
-            <nav className="shortcuts">
-              <span className="shortcut-chip"><kbd>⌘</kbd><kbd>K</kbd> Action Bar</span>
-              <span className="shortcut-chip"><kbd>⌘</kbd><kbd>E</kbd> Expert Mode</span>
-              <span className="shortcut-chip"><kbd>⌘</kbd><kbd>.</kbd> Snap-Back</span>
+          {/* Expert Mode: Task Category Selector */}
+          {mode === "expert" && (
+            <nav className="category-selector">
+              {TASK_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.key}
+                  className={`category-chip ${selectedCategory === cat.key ? "active" : ""}`}
+                  onClick={() => setSelectedCategory(cat.key)}
+                >
+                  {cat.label}
+                </button>
+              ))}
             </nav>
-          </article>
+          )}
+
+          {/* ── Scrollable Chat Area ── */}
+          <div className="chat-area">
 
           {/* ── Smart Mode: Triage Result ── */}
           {smartResult?.triage && (
@@ -470,6 +490,40 @@ function App() {
                   {AGENTS.find(a => a.key === smartResult.routed_to)?.emoji}{" "}
                   {smartResult.designation} ({smartResult.model_name})
                 </span>
+              </div>
+            </section>
+          )}
+
+          {/* ── Text Response (Knowledge Track) ── */}
+          {smartResult?.response && !actionCard && (
+            <section className="agent-response">
+              <div className="markdown-body">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code({ inline, className, children, ...props }: any) {
+                      const match = /language-(\w+)/.exec(className || "");
+                      return !inline ? (
+                        <div className="code-block-wrapper">
+                          <SyntaxHighlighter
+                            style={vscDarkPlus as any}
+                            language={match?.[1] || "text"}
+                            PreTag="div"
+                            {...props}
+                          >
+                            {String(children).replace(/\n$/, "")}
+                          </SyntaxHighlighter>
+                        </div>
+                      ) : (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                  }}
+                >
+                  {smartResult.response}
+                </ReactMarkdown>
               </div>
             </section>
           )}
@@ -624,16 +678,60 @@ function App() {
           {orchResult?.error && !smartResult?.error && (
             <GrandmaError error={orchResult.error} />
           )}
+          </div>{/* end chat-area */}
 
-          {/* ── Swarm Status Bar ── */}
-          <footer className="swarm-status">
-            {AGENTS.map((agent) => (
-              <span key={agent.key} className={`swarm-agent ${activeAgents.has(agent.key) ? "active" : ""}`}>
-                <span className="indicator" />
-                {agent.label}
-              </span>
-            ))}
-          </footer>
+          {/* ── Bottom-Docked Input (only after first submit) ── */}
+          {hasSubmitted && (
+            <div className="chat-input-dock">
+              <div className="action-bar">
+                <textarea
+                  className="action-bar-input"
+                  placeholder={
+                    mode === "smart"
+                      ? "Ask S-ION anything... (Shift+Enter for new line)"
+                      : `e.g. ${selectedCategory.replace(/_/g, " ")} task...`
+                  }
+                  value={intent}
+                  onChange={(e) => setIntent(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={3}
+                  autoFocus
+                />
+                <button
+                  className="action-bar-submit"
+                  onClick={wrappedSubmit}
+                  disabled={loading}
+                  aria-label="Submit"
+                >
+                  {loading ? <span className="spinner" /> : (
+                    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                  )}
+                </button>
+              </div>
+
+              {/* ── Swarm Status Bar ── */}
+              <footer className="swarm-status">
+                {AGENTS.map((agent) => (
+                  <span key={agent.key} className={`swarm-agent ${activeAgents.has(agent.key) ? "active" : ""}`}>
+                    <span className="indicator" />
+                    {agent.label}
+                  </span>
+                ))}
+              </footer>
+            </div>
+          )}
+
+          {/* ── Swarm Status (before first submit, original position) ── */}
+          {!hasSubmitted && (
+            <footer className="swarm-status">
+              {AGENTS.map((agent) => (
+                <span key={agent.key} className={`swarm-agent ${activeAgents.has(agent.key) ? "active" : ""}`}>
+                  <span className="indicator" />
+                  {agent.label}
+                </span>
+              ))}
+            </footer>
+          )}
         </section>
 
         {/* Expert Mode Sidebar */}
