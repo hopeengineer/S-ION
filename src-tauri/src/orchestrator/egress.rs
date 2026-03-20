@@ -32,7 +32,7 @@ impl EgressFilter {
     pub fn from_sam_logic(sam_logic: &SamLogic) -> Self {
         let mut allowlist = sam_logic.privacy.egress_allowlist.clone();
         allowlist.extend(sam_logic.privacy.user_allowlist.clone());
-        let max_events = sam_logic.privacy.sentinel.max_local_events;
+        let max_events = sam_logic.privacy.sentinel.max_local_events as usize;
 
         println!(
             "🛡️  Egress Filter initialized with {} allowed domains",

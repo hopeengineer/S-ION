@@ -176,7 +176,7 @@ pub struct SandboxResult {
     pub stdout: String,
     pub stderr: String,
     pub exit_code: i32,
-    pub duration_ms: u64,
+    pub duration_ms: u32,
     pub timed_out: bool,
     /// Files that changed (filename -> new content)
     pub file_changes: HashMap<String, FileChange>,
@@ -271,7 +271,7 @@ impl Sandbox {
             stdout,
             stderr,
             exit_code,
-            duration_ms,
+            duration_ms: duration_ms as u32,
             timed_out,
             file_changes,
             snapshot_id,

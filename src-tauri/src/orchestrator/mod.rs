@@ -61,9 +61,9 @@ pub struct SentinelConfig {
     #[serde(default)]
     pub developer_id: String,
     #[serde(default = "default_max_events")]
-    pub max_local_events: usize,
+    pub max_local_events: u32,
     #[serde(default = "default_batch_interval")]
-    pub batch_interval_secs: u64,
+    pub batch_interval_secs: u32,
 }
 
 impl Default for SentinelConfig {
@@ -77,10 +77,10 @@ impl Default for SentinelConfig {
     }
 }
 
-fn default_max_events() -> usize {
+fn default_max_events() -> u32 {
     200
 }
-fn default_batch_interval() -> u64 {
+fn default_batch_interval() -> u32 {
     300
 }
 
@@ -175,7 +175,7 @@ pub struct CoPawConfig {
 pub struct SafetyConfig {
     pub sandbox: String,
     pub snapshot_before_execution: bool,
-    pub max_vm_lifetime_seconds: u64,
+    pub max_vm_lifetime_seconds: u32,
     pub auto_incinerate_on_error: bool,
 }
 
